@@ -9,6 +9,6 @@ __version__= 0.1
 
 __PAR__= {}
 
-from sdss import *
-from db import *
-from plot import *
+import sdss as S
+import db as DB
+import plotting as P

@@ -6,6 +6,15 @@ Help: none, you're on your own.
 
 """
 
+import numpy as N
+import pylab as P
+
+from db import specfromid
+
+def plotbyid(id):
+    fits=specfromid(id)
+    P.plot(fits[0].data[0,:])
+
 
    
 def demo():

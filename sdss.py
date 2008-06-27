@@ -8,11 +8,14 @@ Help: none, you're on your own.
 
 import pylab as P
 import numpy as N
-import maskedarray as M
-from maskedarray import MaskedArray as MA
 import PyGalKin.tool as T
+import pyfits as F
 
-
+def splitfits(fits):
+    spec
+    contsubspec
+    noise
+    mask
 
    
 def demo():

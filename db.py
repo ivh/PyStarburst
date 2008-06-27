@@ -22,12 +22,14 @@ import os
 import string
 from os.path import join,exists
 from sqlite3 import dbapi2 as sqlite
-#import numpy as N
-#import pylab as P
+import numpy as N
+import pylab as P
+import pyfits as F
 
 # GLOBAL VARIABLES
-DBNAME=join('/','home','tom','projekte','sdss','sb.db')
+DBNAME=join('/','data','sdss','sb.db')
 DELIM=','
+SPECBASE=join('/','data','sdss','spectra')
 
 # HELPER FUNCTIONS
 def list2csv(list):
@@ -69,8 +71,8 @@ def readfiles(fnames,cursor):
     for fname in fnames:
         print "Working on file: %s"%fname
         file=open(fname)
-        cols=file.readline()[:-1].split(DELIM)
-        types=file.readline()[:-1].split(DELIM)
+        cols=map(string.strip,file.readline().split(DELIM))
+        types=map(string.strip,file.readline().split(DELIM))
         print 'found columns: %s'%cols
         for i,c in enumerate(cols):
             comm='ALTER TABLE sdss ADD COLUMN %s %s'%(c,types[i])
@@ -78,24 +80,53 @@ def readfiles(fnames,cursor):
             except: print 'not adding pre-existing column: %s'%c
         
         for line in file:
-            line=line[:-1].split(DELIM)
+            line=map(string.strip,line.split(DELIM))
             if newobject(cols,line,cursor): insert(cols,line,cursor)
             else: update(cols,line,cursor)
         
         file.close()
 
-#def usage_example():
-#    connection,cursor=setupdb()
-#    cursor.execute('SELECT Ha_w,Hb_w FROM sdss WHERE zConf>0.95')
-#    b=N.array(map(list,cursor.fetchall()))
-#    print b.shape
-#    P.plot(b[:,0],b[:,1],'ro')
-#    P.show()
+def getspecfilename((mjd,plate,fiberID)):
+    return join(SPECBASE,'spSpec-%05d-%04d-%03d.fit'%(mjd,plate,fiberID))
+    
+
+def specfromid(id,cursor=False,db=DBNAME):
+    if cursor==False:
+        connection,cursor=setupdb(db)
+        closeafter=True
+
+    cursor.execute('SELECT mjd,plate,fiberID FROM sdss WHERE objID==%s'%id)
+    fits=F.open(getspecfilename(cursor.next()))
+
+    if closeafter:
+        cursor.close()
+        connection.close()
+    return fits
+
+def specsfromquery(query,cursor=False,db=DBNAME):
+    if cursor==False:
+        connection,cursor=setupdb(db)
+        closeafter=True
+
+    if closeafter:
+        cursor.close()
+        connection.close()
+    return speclist
+
+
+#################
+
+def usage_example():
+    connection,cursor=setupdb()
+    cursor.execute('SELECT Ha_w,Hb_w FROM sdss WHERE zConf>0.95')
+    b=N.array(map(list,cursor.fetchall()))
+    print b.shape
+    P.plot(b[:,0],b[:,1],'ro')
+    P.show()
 
 
 def main():
-    
-
+  
     if sys.argv[1].endswith('.db'):
         connection,cursor=setupdb(sys.argv[1])
         readfiles(sys.argv[2:],cursor)
@@ -108,8 +139,6 @@ def main():
     connection.close()
 
     #usage_example()
-
-
 
 
 if __name__=='__main__':
