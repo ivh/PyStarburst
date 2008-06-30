@@ -27,9 +27,35 @@ import pylab as P
 import pyfits as F
 
 # GLOBAL VARIABLES
-DBNAME=join('/','data','sdss','sb.db')
+DBNAME=join('/','data','sdss','sdss.db')
 DELIM=','
 SPECBASE=join('/','data','sdss','spectra')
+SPECZBASE=join('/','data','sdss','spZline')
+
+# The list of lines in the SpZ-fitsfiles
+SpZlist=['Ly_alpha','N_V 1240','C_IV 1549','He_II 1640','C_III] 1908','Mg_II 2799','[O_II] 3725','[O_II] 3727','[Ne_III] 3868','H_epsilon','[Ne_III] 3970','H_delta','H_gamma','[O_III] 4363','He_II 4685','H_beta','[O_III] 4959','[O_III] 5007','He_II 5411','[O_I] 5577','[O_I] 6300','[S_III] 6312','[O_I] 6363','[N_II] 6548','H_alpha','[N_II] 6583','[S_II] 6716','[S_II] 6730','[Ar_III] 7135']
+
+# The list of properties of each line in above list
+SpZprops=['plate','mjd','fiberID','name','wave','z','z_e','s','s_e','a','a_e','w','w_e','c','c_e','npix','dof','chi2']
+#PLATE 	Plate number
+#MJD 	Modified Julian date of observation
+#FIBERID 	Fiber ID (1 to 640)
+#LINENAME 	Line name
+#LINEWAVE 	Catalog wavelength for this line in vacuum Angstroms
+#LINEZ 	Redshift
+#LINEZ_ERR 	Redshift error (negative for invalid fit)
+#LINESIGMA 	Gaussian width in km/sec
+#LINESIGMA_ERR 	Error in gaussian width (negative for invalid fit)
+#LINEAREA 	Area in gaussian fit where units are (flux-units) * Ang
+#LINEAREA_ERR 	Flux error (negative for invalid fit)
+#LINEEW 	Equivalent width (Angstroms)
+#LINEEW_ERR 	Equivalent width error (negative for invalid fit)
+#LINECONTLEVEL 	Continuum level at line center
+#LINECONTLEVEL_ERR 	Error in continuum level at line center
+#LINENPIX 	Number of good pixels within +/- 3 sigma of the line center
+#LINEDOF 	Degrees of freedom in fit, approximated as LINENPIX minus the number of terms fit for that line, which can be fractional if one parameter if fixed betwen several lines
+#LINECHI2 	χ2 for all points within +/- 3 sigma of the line center (negative if no such points)
+
 
 # HELPER FUNCTIONS
 def list2csv(list):
@@ -67,6 +93,11 @@ def setupdb(dbname=DBNAME):
 
     return connection,cursor
 
+def createviews(cursor):
+    cursor.execute('CREATE VIEW sb AS SELECT * from sdss WHERE Ha_w > 120.0')
+    cursor.execute('CREATE VIEW pb AS SELECT * from sdss WHERE Hd_w < -6.0')
+    print 'Dont forget to commit the DB!'
+
 def readfiles(fnames,cursor):
     for fname in fnames:
         print "Working on file: %s"%fname
@@ -74,13 +105,23 @@ def readfiles(fnames,cursor):
         cols=map(string.strip,file.readline().split(DELIM))
         types=map(string.strip,file.readline().split(DELIM))
         print 'found columns: %s'%cols
+        poplist=[] # the ones we really want
         for i,c in enumerate(cols):
+            if c=='kasta':
+                print 'skipping column %d'%i
+                poplist.append(i)
+                continue
             comm='ALTER TABLE sdss ADD COLUMN %s %s'%(c,types[i])
             try: cursor.execute(comm)
             except: print 'not adding pre-existing column: %s'%c
-        
+
+        poplist=N.array(poplist)-N.arange(len(poplist))
+        for p in poplist:
+            cols.pop(p)
+            
         for line in file:
             line=map(string.strip,line.split(DELIM))
+            for p in poplist: line.pop(p)
             if newobject(cols,line,cursor): insert(cols,line,cursor)
             else: update(cols,line,cursor)
         
@@ -88,6 +129,9 @@ def readfiles(fnames,cursor):
 
 def getspecfilename((mjd,plate,fiberID)):
     return join(SPECBASE,'spSpec-%05d-%04d-%03d.fit'%(mjd,plate,fiberID))
+    
+def getspecZfilename((mjd,plate)):
+    return join(SPECZBASE,'spZline-%04d-%05d.fits'%(plate,mjd))
     
 
 def specfromid(id,cursor=False,db=DBNAME):
@@ -113,6 +157,36 @@ def specsfromquery(query,cursor=False,db=DBNAME):
         connection.close()
     return speclist
 
+def fetch(cursor):
+    return N.transpose(map(list,cursor.fetchall()))
+
+def getspZline(cursor,wantedlines=[11,12,15,24],wantedprops=N.arange(7,15)):
+    for l in wantedlines:
+        for p in wantedprops:
+            colname='p_%02d_%s'%(l,SpZprops[p])
+            try: cursor.execute('ALTER TABLE sdss ADD COLUMN %s REAL'%colname)
+            except: print 'Colums %s exists already'%colname
+    cursor.execute('SELECT plate,mjd,fiberID,objID FROM sdss ORDER BY plate,mjd,fiberID')
+    plate,mjd,fiberID,objID=fetch(cursor)
+    for i,obj in enumerate(objID):
+        data=F.open(getspecZfilename((mjd[i],plate[i])))[1].data
+        data.shape=640,-1
+        comm=''
+        for j in wantedlines:
+            dat=data[fiberID[i]-1,j]
+            if (dat[0] != plate[i]) or (dat[1] != mjd[i]) or (dat[2] != fiberID[i]):
+                print 'somethings terribly wrong'
+                break
+            for k in wantedprops:
+                comm+='%s=%s,'%('p_%02d_%s'%(j,SpZprops[k]),dat[k])
+
+        comm='UPDATE sdss SET '+comm[:-1]+' WHERE objID==%s'%objID[i]
+        #print comm
+        cursor.execute(comm)
+    print 'do not forget to commit!'
+
+
+
 
 #################
 
@@ -135,6 +209,8 @@ def main():
         readfiles(sys.argv[1:],cursor)
 
     connection.commit()
+    #createviews(cursor)
+    #connection.commit()
     cursor.close()
     connection.close()
 

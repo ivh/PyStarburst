@@ -12,10 +12,15 @@ import PyGalKin.tool as T
 import pyfits as F
 
 def splitfits(fits):
-    spec
-    contsubspec
-    noise
-    mask
+    primHDU=fits[0]
+    head=primHDU.header
+    spec=primHDU.data[0,:]
+    contsubspec=primHDU.data[1,:]
+    noise=primHDU.data[2,:]
+    mask=primHDU.data[3,:]
+    sky=primHDU.data[4,:]
+
+    return head,spec,noise
 
    
 def demo():
