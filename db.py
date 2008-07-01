@@ -61,6 +61,9 @@ SpZprops=['plate','mjd','fiberID','name','wave','z','z_e','s','s_e','a','a_e','w
 def list2csv(list):
     return string.join(list,DELIM)
 
+def printcomm():
+    print 'Do not forget to commit the connection!'
+
 def newobject(cols,line,cursor):
     id=line[cols.index('objID')]
     cursor.execute('SELECT objID from sdss WHERE objID==%s'%id)
@@ -93,11 +96,16 @@ def setupdb(dbname=DBNAME):
 
     return connection,cursor
 
+def deleteunwanted(cursor):
+    cursor.execute('DELETE FROM sdss WHERE (Ha_w < 120. AND Hd_w >-6.0)')
+    cursor.execute('VACUUM')
+    printcomm()
+
 def createviews(cursor):
     cursor.execute('CREATE VIEW sb AS SELECT * from sdss WHERE Ha_w > 120.0')
     cursor.execute('CREATE VIEW pb AS SELECT * from sdss WHERE Hd_w < -6.0')
-    print 'Dont forget to commit the DB!'
-
+    printcomm()
+    
 def readfiles(fnames,cursor):
     for fname in fnames:
         print "Working on file: %s"%fname
@@ -160,6 +168,20 @@ def specsfromquery(query,cursor=False,db=DBNAME):
 def fetch(cursor):
     return N.transpose(map(list,cursor.fetchall()))
 
+def get(cursor,question):
+    print question
+    cursor.execute(question)
+    return fetch(cursor)
+
+def getsb(cursor,cols,where=''):
+    if where!='': where=' WHERE '+where
+    return get(cursor,'SELECT %s FROM sb%s'%(cols,where))
+
+def getpb(cursor,cols,where=''):
+    if where!='': where+=' WHERE '
+    return get(cursor,'SELECT %s FROM pb%s'%(cols,where))
+    
+
 def getspZline(cursor,wantedlines=[11,12,15,24],wantedprops=N.arange(7,15)):
     for l in wantedlines:
         for p in wantedprops:
@@ -183,7 +205,7 @@ def getspZline(cursor,wantedlines=[11,12,15,24],wantedprops=N.arange(7,15)):
         comm='UPDATE sdss SET '+comm[:-1]+' WHERE objID==%s'%objID[i]
         #print comm
         cursor.execute(comm)
-    print 'do not forget to commit!'
+    printcomm()
 
 
 

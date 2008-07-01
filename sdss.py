@@ -22,7 +22,13 @@ def splitfits(fits):
 
     return head,spec,noise
 
-   
+
+def calcHaW(Ha_cont,Ha_h,Ha_s):
+    return 2.5066 * Ha_s * Ha_h / Ha_cont
+
+def Ang2KMS(ang,rest,z):
+    pass
+
 def demo():
     print "This file defines some functions. It is not meant to be executed. Import it instead!"
 
