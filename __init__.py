@@ -12,3 +12,14 @@ __PAR__= {}
 import sdss as S
 import db as DB
 import plotting as P
+
+def dump(data,filename):
+  file=open(filename,'w')
+  pickle.dump(data,file)
+  file.close()
+
+def load(filename):
+  file=open(filename,'r')
+  data=pickle.load(file)
+  file.close()
+  return data

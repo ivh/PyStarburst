@@ -25,6 +25,7 @@ from sqlite3 import dbapi2 as sqlite
 import numpy as N
 import pylab as P
 import pyfits as F
+from sdss import splitfits
 
 # GLOBAL VARIABLES
 DBNAME=join('/','data','sdss','sdss.db')
@@ -173,14 +174,15 @@ def get(cursor,question):
     cursor.execute(question)
     return fetch(cursor)
 
-def getsb(cursor,cols,where=''):
+def gettable(cursor,cols,where='',table='sdss'):
     if where!='': where=' WHERE '+where
-    return get(cursor,'SELECT %s FROM sb%s'%(cols,where))
+    return get(cursor,'SELECT %s FROM %s%s'%(cols,table,where))
+
+def getsb(cursor,cols,where=''):
+    return gettable(cursor,cols,where='',table='sb')
 
 def getpb(cursor,cols,where=''):
-    if where!='': where+=' WHERE '
-    return get(cursor,'SELECT %s FROM pb%s'%(cols,where))
-    
+    return gettable(cursor,cols,where='',table='pb')
 
 def getspZline(cursor,wantedlines=[11,12,15,24],wantedprops=N.arange(7,15)):
     for l in wantedlines:
@@ -208,8 +210,23 @@ def getspZline(cursor,wantedlines=[11,12,15,24],wantedprops=N.arange(7,15)):
     printcomm()
 
 
-
-
+def dumpascispec(curs,where='z<5',table='sdss'):
+    all=curs.execute('SELECT objID,mjd,plate,fiberID,Ha_h,Ha_w,Hb_h,Hb_w,z from %s WHERE %s ORDER BY objID'%(table,where))
+    for objID,mjd,plate,fiberID,Ha_h,Ha_w,Hb_h,Hb_w,z in all:
+        fname=getspecfilename((mjd,plate,fiberID))
+        fits=F.open(fname)
+        head,spec,noise=splitfits(fits)
+        wave=10**(head.get('COEFF0')+(N.arange(len(spec),dtype='f')*head.get('COEFF1')))
+        outf=open('%d.spec'%objID,'w')
+        outf.write('%.8e\n'%z)
+        outf.write('%.8e\n'%Ha_h)
+        outf.write('%.8e\n'%Ha_w)
+        outf.write('%.8e\n'%Hb_h)
+        outf.write('%.8e\n'%Hb_w)
+        for i,s in enumerate(spec):
+            outf.write('%.8e %.8e\n'%(wave[i],s))
+        outf.close()
+        
 #################
 
 def usage_example():
