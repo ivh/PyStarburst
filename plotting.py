@@ -34,14 +34,23 @@ def plotfromdb(cursor,cols,where='',table='sdss',logx=False,logy=False):
     P.title('X,Y: %s; Table: %s; Constr: %s'%(cols,table,where))
 
 class inspect:
-    def __init__(self,xcol,ycol,where='',curs=None,table='sdss',logx=False,logy=False,tolerance=0.01):
+    def __init__(self,xcol,ycol,where='',curs=None,table='sdss',logx=False,logy=False,logxy=False,tolerance=0.01,smooth=4):
         if not curs: conn,curs=setupdb()
         self.xcol=xcol
         self.ycol=ycol
+        #self.where=where+' AND %s NOT NULL AND %s NOT NULL'%(self.xcol,self.ycol)
         self.where=where
         self.curs=curs
         self.table=table
+        self.smooth=smooth
+        self.logx=logx
+        self.logy=logy
+        if logxy:
+            self.logx=True
+            self.logy=True
         self.tolerance=tolerance
+        self.xtol=0.0
+        self.ytol=0.0
         
         self.fig1=P.figure(1)
         self.init1()
@@ -72,7 +81,11 @@ class inspect:
         
     def plot1(self):
         x,y=gettable(self.curs,self.xcol+','+self.ycol,self.where,self.table)
-        self.ax1.plot(x,y,',',picker=5)
+        if self.logx and self.logy: plotfu=self.ax1.loglog
+        elif self.logx: plotfu=self.ax1.semilogx
+        elif self.logy: plotfu=self.ax1.semilogy
+        else: plotfu=self.ax1.plot
+        plotfu(x,y,',',picker=5)
         self.fig1.canvas.draw()
 
     def calctol(self):
@@ -81,6 +94,8 @@ class inspect:
         self.ytol=self.tolerance*(axis[3]-axis[2])
         
     def plotpicked(self,event):
+        self.calctol()
+        print self.xtol,self.ytol
         thisline = event.artist
         xdata,ydata = thisline.get_data()
         ind = event.ind
@@ -88,13 +103,15 @@ class inspect:
         where=self.where+' AND '
         where+='(%s BETWEEN %s AND %s) AND '%(self.xcol,x-self.xtol,x+self.xtol)
         where+='(%s BETWEEN %s AND %s)'%(self.ycol,y-self.ytol,y+self.ytol)
-        print where
-        ids=self.curs.execute('SELECT objID from %s WHERE %s'%(self.table,where))
-        for id in ids:
-            fits=specfromid(id)
+        ids=self.curs.execute('SELECT objID,z from %s WHERE %s'%(self.table,where))
+        all=ids.fetchall()
+        for id,z in all:
+            #print id
+            fits=specfromid(id,cursor=self.curs)
             head,spec,noise=splitfits(fits)
             wave=10**(head.get('COEFF0')+(N.arange(len(spec),dtype='f')*head.get('COEFF1')))
-            spec=smooth_gauss(spec,5)
+            wave/=1+z
+            spec=smooth_gauss(spec,self.smooth)
             self.ax2.plot(wave,spec,linestyle='steps')
 
         self.fig2.canvas.draw()
@@ -108,6 +125,25 @@ class inspect:
         if event.key=='q': self.fig1.canvas.mpl_disconnect(self.clickconn)
  
 ## specific plots below here
+
+class inspectage(inspect):
+    def __init__(self,xcol='age3',ycol='Ha_w',where='z<5',curs=None,table='sb',logx=False,logy=False,logxy=True,tolerance=0.001,linef='/home/tom/projekte/sdss/ages/mixred0'):
+        self.age,self.Ha_w=N.transpose(P.load(linef))[:2]
+        inspect.__init__(self,xcol,ycol,where,curs,table,logx,logy,logxy,tolerance)
+        
+    def plot1(self):
+        xcol=self.xcol.split(',')
+        x1,y1=gettable(self.curs,xcol[0]+','+self.ycol,self.where,self.table)
+        #x2,y2=gettable(self.curs,xcol[1]+','+self.ycol,self.where,self.table)
+        #x3,y3=gettable(self.curs,xcol[2]+','+self.ycol,self.where,self.table)
+        self.ax1.loglog(x1,y1,'g,',picker=5)
+        #self.ax1.loglog(x2,y2,'r.',picker=5)
+        #self.ax1.loglog(x3,y3,'b+',picker=5)
+        self.ax1.loglog(self.age,self.Ha_w/2.0,'k--')
+        self.ax1.loglog(self.age,self.Ha_w,'k-')
+        self.fig1.canvas.draw()
+
+
 
 def plotHas(cursor):
     Ha_cw,Ha_w,Ha_pw,Ha_s=get(cursor,'SELECT  2.5066*Ha_s*Ha_h/Ha_cont AS Ha_cw,Ha_w,p_15_w as Ha_pw,Ha_s FROM sb WHERE zConf>0.95 AND Ha_w>0.1 AND Ha_w!=0.0 AND Ha_s BETWEEN 5 AND 15 ORDER BY Ha_w')

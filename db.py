@@ -147,6 +147,7 @@ def specfromid(id,cursor=False,db=DBNAME):
     if cursor==False:
         connection,cursor=setupdb(db)
         closeafter=True
+    else: closeafter=False
 
     cursor.execute('SELECT mjd,plate,fiberID FROM sdss WHERE objID==%s'%id)
     fits=F.open(getspecfilename(cursor.next()))
