@@ -11,6 +11,7 @@ import numpy as N
 import pyfits as F
 from db import *
 from numpy.ma import masked_where
+from math import pi
 
 # CONSTANTS
 #
@@ -150,6 +151,16 @@ def distanceInMeter(z):
     dist=(z * c / H0) * 3.0856776e+22 
     return dist.astype('Float64')
 
+def micJy2Watt(mJy,z,lambd):
+    lambd*=1E-10
+    dis=distanceInMeter(z)
+    a=4*pi*(dis**2)
+    return 1E-32*a*(c*1000)/lambd
+
+def micJy2SolarLum(mJy,z,lambd):
+    solarLum=3.846E26
+    return micJy2Watt(mJy,z,lambd)/solarLum
+
 def sfr(Ha_h,Ha_s,z,ec):
     return Ha_h*1E-20 *Kms2Ang(Ha_s,z)*N.sqrt(2*P.pi) *4*P.pi*distanceInMeter(z)**2 / 1.51e34 * (10**(0.4*extcorr(ec,'r')))
 
@@ -181,6 +192,7 @@ def fillMtot(curs):
 def fillBpara2(curs):
     ids=gettable(curs,cols='objid',where='mtot NOTNULL AND sfr NOTNULL',table='sdss')[0]
     mtot,sfr=gettable(curs,cols='mtot,sfr',where='mtot NOTNULL AND sfr NOTNULL',table='sdss')
+
     for i,id in enumerate(ids):
         #print id, sfr[i]/(mtot[i]/1E10)
         curs.execute("UPDATE sdss SET bpara2=%f WHERE objid=%s"%(sfr[i]/(mtot[i]/1E10),id))
