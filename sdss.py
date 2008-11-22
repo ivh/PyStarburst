@@ -155,10 +155,10 @@ def micJy2Watt(mJy,z,lambd):
     lambd*=1E-10
     dis=distanceInMeter(z)
     a=4*pi*(dis**2)
-    return 1E-32*a*(c*1000)/lambd
+    return mJy*1E-32*a*(c*1000)/lambd
 
 def micJy2SolarLum(mJy,z,lambd):
-    solarLum=3.846E26
+    solarLum=3.846E26 #Watt
     return micJy2Watt(mJy,z,lambd)/solarLum
 
 def sfr(Ha_h,Ha_s,z,ec):
