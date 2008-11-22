@@ -12,6 +12,8 @@ __PAR__= {}
 import sdss as S
 import db as DB
 import plotting as P
+import sqlcl as sqlcl
+import pickle
 
 def dump(data,filename):
   file=open(filename,'w')

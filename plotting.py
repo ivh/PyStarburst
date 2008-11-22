@@ -10,7 +10,7 @@ import numpy as N
 import pylab as P
 
 from db import *
-from sdss import splitfits
+import sdss
 from PyGalKin.tool import smooth_gauss
 
 
@@ -22,7 +22,7 @@ def plotspecwhere(cursor,where,table='sdss'):
        
 def plotspecbyid(id):
     fits=specfromid(id)
-    head,spec,noise=splitfits(fits)
+    head,spec,noise=sdss.splitfits(fits)
     wave=10**(head.get('COEFF0')+(N.arange(len(spec),dtype='f')*head.get('COEFF1')))
     P.plot(wave,spec,linestyle='steps')
 
@@ -108,7 +108,7 @@ class inspect:
         for id,z in all:
             #print id
             fits=specfromid(id,cursor=self.curs)
-            head,spec,noise=splitfits(fits)
+            head,spec,noise=sdss.splitfits(fits)
             wave=10**(head.get('COEFF0')+(N.arange(len(spec),dtype='f')*head.get('COEFF1')))
             wave/=1+z
             spec=smooth_gauss(spec,self.smooth)
@@ -127,7 +127,7 @@ class inspect:
 ## specific plots below here
 
 class inspectage(inspect):
-    def __init__(self,xcol='age3',ycol='Ha_w',where='z<5',curs=None,table='sb',logx=False,logy=False,logxy=True,tolerance=0.001,linef='/home/tom/projekte/sdss/ages/mixred0'):
+    def __init__(self,xcol='age',ycol='Ha_w',where='z<5',curs=None,table='sb',logx=False,logy=False,logxy=True,tolerance=0.001,linef='/home/tom/projekte/sdss/ages/mixred0'):
         self.age,self.Ha_w=N.transpose(P.load(linef))[:2]
         inspect.__init__(self,xcol,ycol,where,curs,table,logx,logy,logxy,tolerance)
         
@@ -162,33 +162,146 @@ def plotHas(cursor):
     
 
 def plot1(cursor):
-    big=getsb(cursor,'Ha_s,Ha_h,NII_h','Ha_s >15')
-    small=getsb(cursor,'Ha_s,Ha_h,NII_h','Ha_s <5')
-    midd=getsb(cursor,'Ha_s,Ha_h,NII_h','(Ha_s >5 AND Ha_s <15)')
-    numsb=midd[0].size+big[0].size+small[0].size
-    P.plot(N.log10(big[2]/big[1]),N.log10(big[0]),',k')
-    P.plot(N.log10(small[2]/small[1]),N.log10(small[0]),',b')
-    P.plot(N.log10(midd[2]/midd[1]),N.log10(midd[0]),',g')
-    P.title('Starbursts (%d)'%numsb)
-    P.xlabel('log NII/Ha')
-    P.ylabel('log sigma Ha')
+    dage,dew,dmf,dM=gettable(cursor,cols='age,Ha_w,mf,M',where='agn=0 AND M>-20 AND age>5E5',table='sb')
+    gage,gew,gmf,gM=gettable(cursor,cols='age,Ha_w,mf,M',where='agn=0 AND M<-20 AND age>1E6',table='sb')
+    limit1x,limit1y=N.transpose(P.load('/home/tom/projekte/sdss/ages/mixred0'))[:2]
+    limit2x,limit2y=N.transpose(P.load('/home/tom/projekte/sdss/ages/mixblue0'))[:2]
+    #P.loglog(dage*2,dew,'g^',label='Age*2, M>-20',ms=5)
+    #P.loglog(gage*2,gew,'b^',label='Age*2, M<-20',ms=5)
+    
+    P.subplot(1,2,1)
+    P.loglog(limit1x,limit1y,'--r',linewidth=2)
+    P.loglog(limit2x,limit2y,'-r',linewidth=2)
+    P.scatter(dage*2,dew,c=dM,s=dmf*4000,label='Age*2, M>-20',alpha=0.2)
+    P.xlabel(r'Burst age')
+    P.ylabel(r'EW(H$\alpha$)')
+    P.axis([1E6,2E10,100,4E3])
+    P.legend()
+    
+    P.subplot(1,2,2)
+    P.loglog(limit1x,limit1y,'--r',linewidth=2)
+    P.loglog(limit2x,limit2y,'-r',linewidth=2)
+    print N.log10(gmf)
+    P.scatter(gage*2,gew,c=gM,s=gmf*4000,label='Age*2, M<-20',alpha=0.2)
+    P.xlabel(r'Burst age')
+    P.ylabel(r'EW(H$\alpha$)')
+    P.axis([1E6,2E10,100,4E3])
+    P.legend()
 
 def plot2(cursor):
-    big=getsb(cursor,'O5008_h/Hb_h,Ha_h,NII_h','Ha_s >15')
-    small=getsb(cursor,'O5008_h/Hb_h,Ha_h,NII_h','Ha_s <5')
-    midd=getsb(cursor,'O5008_h/Hb_h,Ha_h,NII_h','(Ha_s >5 AND Ha_s <15)')
-    numsb=midd[0].size+big[0].size+small[0].size
-    P.plot(N.log10(big[2]/big[1]),N.log10(big[0]),',k')
-    P.plot(N.log10(small[2]/small[1]),N.log10(small[0]),',b')
-    P.plot(N.log10(midd[2]/midd[1]),N.log10(midd[0]),',g')
-    P.title('Starbursts, %s galaxies'%numsb)
-    P.xlabel('log NII/Ha')
-    P.ylabel('log O5008 / Hb')
+    extrawhere=''
+    plotbig,plotmid,plotsmall=True,True,True
+    try: bigx,bigy=gettable(cursor,cols='NII_h/Ha_h,O5008_h/Hb_h',where='(Ha_s >700) AND (Hb_h >0) AND (O5008_h >0) AND (NII_h >0)'+extrawhere,table='sb')
+    except: plotbig=False
+    try: smallx,smally=gettable(cursor,cols='NII_h/Ha_h,O5008_h/Hb_h',where='(Ha_s BETWEEN 1 AND 250 ) AND (Hb_h >0) AND (O5008_h >0) AND (NII_h >0)'+extrawhere,table='sb')
+    except: plotsmall=False
+    try: midx,midy=gettable(cursor,cols='NII_h/Ha_h,O5008_h/Hb_h',where='(Ha_s BETWEEN 250 AND 700) AND (Hb_h >0) AND (O5008_h >0) AND (NII_h >0)'+extrawhere,table='sb')
+    except: plotmid=False
+    if plotbig: b=P.loglog(bigx,bigy,'^k',ms=5)
+    if plotmid: m=P.loglog(midx,midy,'sg',ms=5)
+    if plotsmall: s=P.loglog(smallx,smally,'Db',ms=5)
+    #x=N.arange(0.001,0.4,0.01)
+    #P.plot(x,10**sdss.stasinska(N.log10(x)),'r-',label='stasinska')
+    x=N.arange(0.001,0.7,0.01)
+    P.plot(x,10**sdss.lee(N.log10(x)),'r-',linewidth=2)
+    P.xlabel(r'$[N\, II]\, /\, H\alpha$')
+    P.ylabel(r'$[O\, III]\, / H\beta$')
+    #P.legend((s,m,b),(r'$\sigma(H\alpha)\, <\, 250\, km\,s^{-1}$',r'$250\, km\,s^{-1} <\, \sigma(H\alpha)\, <\, 700\, km\,s^{-1}$',r'$\sigma(H\alpha)\, >\, 700\, km\,s^{-1}$'),loc='lower left')
 
+def plot3(curs):
+    sbM,sbD,fade=gettable(curs,cols='M,voldens,fade',where='voldens NOTNULL AND M NOTNULL AND agn=0 AND age>5E5 AND bpara2 <3',table='sb')
+    sbM2,sbD2,fade2=gettable(curs,cols='M,voldens,fade',where='voldens NOTNULL AND M NOTNULL AND agn=0 AND age>5E5 AND bpara2 >3',table='sb')
+    pbM,pbD=gettable(curs,cols='M,voldens',where='voldens NOTNULL AND M NOTNULL',table='pb')
+    abM,abD=gettable(curs,cols='M,voldens',where='voldens NOTNULL AND M NOTNULL AND agn=1 AND age>5E5',table='sb')
+    sfM=N.array(sbM)+N.array(fade)
+    X=N.arange(-24,-14,1.0,dtype='f')
+    pby=sdss.lumfu(X,pbM,pbD)
+    sby=sdss.lumfu(X,sbM,sbD)
+    sby2=sdss.lumfu(X,sbM2,sbD2)
+    sfy=sdss.lumfu(X,sfM,sbD)
+    aby=sdss.lumfu(X,abM,abD)
+    P.semilogy(X,sby2,'b-o',label=r'starbursts, EW(H$\alpha$)>120, b>3')
+    P.semilogy(X,sby,'b--^',label=r'"starbursts", EW(H$\alpha$)>120, b<3')
+    P.semilogy(X,pby,'r-o',label=r'postbursts, EW(H$\delta$)<-6)')
+    P.semilogy(X[:5],aby[:5],'g-o',label='AGN')
+    P.xlabel(r'$M_r$')
+    P.ylabel(r'$\Phi$ [Mpc$^{-3}$]')
+    P.legend(loc='lower right')
+
+def plot4(curs):
+    M,mgas,mstar,mtot=gettable(curs,cols='M,mgas,mass,mtot',where='mtot NOTNULL AND age > 5E5',table='sb')
+    P.semilogy(M,mstar,'ro',label='mass in stars')
+    P.semilogy(M,mtot*1E5,'go',label='total mass * 1E5')
+    P.semilogy(M,mgas/1E5,'bo',label='mass in gas / 1E5')
+    P.legend()
+
+def plot5(curs):
+    mtot,bpara,bpara2,age=gettable(curs,cols='mtot,bpara,bpara2,age',where='mtot NOTNULL AND age > 5E5 AND agn=0 AND bpara2 NOTNULL',table='sb')
+    mtot=N.log10(mtot)
+    X=N.arange(8,11,0.2,dtype='f')
+    mean=sdss.averbins(X,mtot,bpara2)
+    P.scatter(mtot,bpara2,s=age/1E8,label='b-parameter')
+    P.plot(X[1:-1],mean[1:-1],'r-o')
+    P.xlabel('total mass')
+    P.ylabel('b-parameter')
+    P.legend(('vertical mean','symbol size: age'))
     
+def plot6(curs):
+    sbM,sbD,fade,age=gettable(curs,cols='M,voldens,fade,age',where='voldens NOTNULL AND M NOTNULL AND agn=0 AND age>5E5 AND mf>0.01 AND age NOTNULL',table='sb')
+    pbM,pbD=gettable(curs,cols='M,voldens',where='voldens NOTNULL AND M NOTNULL',table='pb')
+    sfM=N.array(sbM)+N.array(fade)
+    fact=8E8/age
+    print fact
+    sfD=sbD*fact
+    X=N.arange(-24,-14,1.0,dtype='f')
+    pby=sdss.lumfu(X,pbM,pbD)
+    sby=sdss.lumfu(X,sbM,sbD)
+    say=sdss.lumfu(X,sfM,sfD)
+    sfy=sdss.lumfu(X,sfM,sbD)
+    P.semilogy(X,pby,'r-o',label=r'postbursts')
+    P.semilogy(X,sby,'b-o',label=r'starbursts, EW(H$\alpha$)>120, mf>1%')
+    P.semilogy(X,sfy,'gD-',label=r'faded starbursts')
+    P.semilogy(X,say,'r--^',label=r'faded starburts, age corrected')
+    P.xlabel(r'$M_r$')
+    P.ylabel(r'$\Phi$ [Mpc$^{-3}$]')
+    P.legend(loc='lower right')
+
+def plot7(curs):
+    M,mgas,mstar,mtot,sfr=gettable(curs,cols='M,mgas,mass,mtot,sfr',where='mtot NOTNULL AND age>5E5 AND sfr NOTNULL',table='sb')
+    P.loglog(mtot,mgas/sfr,'r,',label='mass in stars')
+    P.xlabel(r'$M_{total}$')
+    P.ylabel(r'$M_{gas} / SFR$')
+    P.title('Gas consumption')
+
+def plot8(curs):
+    M1,mtot1,age1=gettable(curs,cols='M,mtot,age',where='mtot NOTNULL AND age>5E5 AND bpara2<3 AND mf <0.025 AND M NOTNULL',table='sb')
+    M2,mtot2,age2=gettable(curs,cols='M,mtot,age',where='mtot NOTNULL AND age>5E5 AND bpara2<3 AND mf >0.025',table='sb')
+    M3,mtot3,age3=gettable(curs,cols='M,mtot,age',where='mtot NOTNULL AND age>5E5 AND bpara2>3 AND mf <0.025',table='sb')
+    M4,mtot4,age4=gettable(curs,cols='M,mtot,age',where='mtot NOTNULL AND age>5E5 AND bpara2>3 AND mf >0.025',table='sb')
+    P.semilogy(M1,age1,'r.',label='b<3, mf <2.5%')
+    P.semilogy(M2,age2,'k.',label='b<3, mf >2.5%')
+    P.semilogy(M3,age3,'g.',label='b>3, mf <2.5%')
+    P.semilogy(M4,age4,'b.',label='b>3, mf >2.5%')
+    P.xlabel(r'$M_{i}$')
+    P.ylabel(r'Age [yr]')
+    P.legend(loc='lower right')
+
+def plot9(curs):
+    u,g,r = gettable(curs,cols='m_u,m_g,m_r',where='z<5',table='pb')
+
+    P.plot(g-r,u-g,'ob')
+    P.xlabel('g-r')
+    P.ylabel('u-g')
+    
+
 def demo():
     print "This file defines some functions. It is not meant to be executed. Import it instead!"
 
 if __name__ == '__main__':
     demo()
     
+
+# TODO
+# LumFu -> fading -> *alderskvot (8E8)
+# gasmass/SFR vs log mass
+# age burst vs absmag och massa, uppdelat i b>3 mf >2.5%.

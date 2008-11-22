@@ -25,7 +25,7 @@ from sqlite3 import dbapi2 as sqlite
 import numpy as N
 import pylab as P
 import pyfits as F
-from sdss import splitfits
+import sdss
 
 # GLOBAL VARIABLES
 DBNAME=join('/','data','sdss','sdss.db')
@@ -102,9 +102,17 @@ def deleteunwanted(cursor):
     cursor.execute('VACUUM')
     printcomm()
 
+def delviews(cursor):
+    cursor.execute('DROP VIEW sb')
+    cursor.execute('DROP VIEW pb')
+    cursor.execute('DROP VIEW clean')
+    printcomm()
+
 def createviews(cursor):
-    cursor.execute('CREATE VIEW sb AS SELECT * from sdss WHERE Ha_w > 120.0')
-    cursor.execute('CREATE VIEW pb AS SELECT * from sdss WHERE Hd_w < -6.0')
+    #cursor.execute('CREATE VIEW clean AS SELECT * from sdss WHERE zconf>0.95 AND ((flags & 8)==0)')
+    cursor.execute('CREATE VIEW clean AS SELECT * from sdss WHERE zconf>0.9')
+    cursor.execute('CREATE VIEW sb AS SELECT * from clean WHERE Ha_w > 120.0 AND Ha_s>1')
+    cursor.execute('CREATE VIEW pb AS SELECT * from clean WHERE Hd_w < -6.0')
     printcomm()
     
 def readfiles(fnames,cursor):
@@ -216,7 +224,7 @@ def dumpascispec(curs,where='z<5',table='sdss'):
     for objID,mjd,plate,fiberID,Ha_h,Ha_w,Hb_h,Hb_w,z in all:
         fname=getspecfilename((mjd,plate,fiberID))
         fits=F.open(fname)
-        head,spec,noise=splitfits(fits)
+        head,spec,noise=sdss.splitfits(fits)
         wave=10**(head.get('COEFF0')+(N.arange(len(spec),dtype='f')*head.get('COEFF1')))
         outf=open('%d.spec'%objID,'w')
         outf.write('%.8e\n'%z)
