@@ -151,19 +151,8 @@ def distanceInMeter(z):
     dist=(z * c / H0) * 3.0856776e+22 
     return dist.astype('Float64')
 
-def micJy2Watt(mJy,z,lambd):
-    lambd*=1E-10
-    dis=distanceInMeter(z)
-    a=4*pi*(dis**2)
-    return mJy*1E-32*a*(c*1000)/lambd
-
-def micJy2SolarLum(mJy,z,lambd):
-    solarLum=3.846E26 #Watt
-    return micJy2Watt(mJy,z,lambd)/solarLum
-
 def sfr(Ha_h,Ha_s,z,ec):
     return Ha_h*1E-20 *Kms2Ang(Ha_s,z)*N.sqrt(2*P.pi) *4*P.pi*distanceInMeter(z)**2 / 1.51e34 * (10**(0.4*extcorr(ec,'r')))
-
 
 def fillSFR(curs):
     ids=gettable(curs,cols='objid',where='Ha_h >0 AND Ha_s>1 AND ec NOTNULL',table='sdss')[0]
