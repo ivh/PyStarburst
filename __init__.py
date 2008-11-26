@@ -12,6 +12,7 @@ __PAR__= {}
 import sdss as S
 import db as DB
 import plotting as P
+import galex as G
 import sqlcl as sqlcl
 import pickle
 
