@@ -11,7 +11,7 @@ import numpy as N
 import pyfits as F
 from db import *
 from numpy.ma import masked_where
-from math import pi
+from numpy import pi
 from sdss import *
 
 def micJy2Watt(mJy,z,lambd):
@@ -19,6 +19,12 @@ def micJy2Watt(mJy,z,lambd):
     dis=sdss.distanceInMeter(z)
     a=4*pi*(dis**2)
     return mJy*1E-32*a*(c*1000)/lambd
+
+def sdssflux2Watt(height,width,z):
+    """ fluxes (the amplitude of the fitted gaussian) in sdss come in 1E-17 erg/s/cm**2/Å """
+    dis=sdss.distanceInMeter(z)*100 # cm
+    area=4*pi*(dis**2)
+    return N.sqrt(2*pi)*1E-24*area*height*width # erg is 1E-7 J
 
 def micJy2SolarLum(mJy,z,lambd=1530):
     solarLum=3.846E26 #Watt
@@ -83,24 +89,42 @@ def plotAGN():
     P.ylabel('log [OIII]/Hb')
 
 def correct_ext():
-    conn,curs=setupdb('/home/tom/galex/test.db')
-    query=curs.execute("SELECT g.sid,g.gid,s.ext_u,g.fuv_flux FROM sdss s, galex g WHERE g.sid=s.objID")
+    conn,curs=setupdb('/home/tom/galex/data.db')
+    query=curs.execute("SELECT g.sid,g.gid,s.extinction_u,g.fuv_flux FROM sdss s, galex g WHERE g.sid=s.objID")
     for sid,gid,ext,fuv in query.fetchall():
         que="UPDATE galex SET fuv_corr=%f WHERE gid=%d"%(fuv*uext2fuv(ext),gid)
         curs.execute(que)
     conn.commit()
     conn.close()
 
+def calc_fuv_lum():
+    conn,curs=setupdb('/home/tom/galex/data.db')
+    query=curs.execute("SELECT g.sid,g.gid,s.extinction_u,g.fuv_corr,s.z FROM sdss s, galex g WHERE g.sid=s.objID")
+    for sid,gid,ext,fuv,z in query.fetchall():
+        que="UPDATE galex SET fuv_lum=%f WHERE gid=%d"%(micJy2SolarLum(fuv,z),gid)
+        curs.execute(que)
+    conn.commit()
+    conn.close()
+
+def calc_Ha_lum():
+    conn,curs=setupdb('/home/tom/galex/data.db')
+    query=curs.execute("SELECT objID,z,Ha_h,Ha_s FROM sdss")
+    for id,z,height,width in query.fetchall():
+        que="UPDATE sdss SET Ha_lum=%f WHERE objID=%d"%(sdssflux2Watt(height,width,z)/3.846E26,id) # IN SOLAR LUMINOSITIES
+        curs.execute(que)
+    conn.commit()
+    conn.close()
+
 def plot_z_fuv():
-    conn,curs=setupdb('/home/tom/galex/test.db')
-    z,fuv=gettable(curs,'s.z,g.fuv_corr',table='sdss s, galex g',where='g.sid=s.objID AND g.fuv_corr NOT NULL AND s.z NOT NULL AND s.agn=1')
-    P.semilogy(z,micJy2SolarLum(fuv,z),'r,')
+    conn,curs=setupdb('/home/tom/galex/data.db')
+    z,fuv=gettable(curs,'s.z,g.fuv_lum',table='sdss s, galex g',where='g.sid=s.objID AND g.fuv_corr NOT NULL AND s.z NOT NULL AND s.agn=0')
+    P.semilogy(z,fuv,'b,')
     P.xlabel('z')
     P.ylabel(r'L$_{FUV}$')
     conn.close()
 
 def decideAGN():
-    conn,curs=setupdb('/home/tom/galex/test.db')
+    conn,curs=setupdb('/home/tom/galex/data.db')
     ids=gettable(curs,cols='objid',where='(Ha_h >0) AND (Hb_h>0) AND (OIII_h>0) AND (NII_h>0)',table='sdss')[0]
     x,y,sig=gettable(curs,cols='NII_h/Ha_h,OIII_h/Hb_h,Ha_s',where='(Ha_h >0) AND (Hb_h>0) AND (OIII_h>0) AND (NII_h>0)',table='sdss')
     x=N.log10(N.array(x))
