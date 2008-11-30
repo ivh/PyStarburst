@@ -34,7 +34,7 @@ def micJy2SolarLum(mJy,z,lambd=1530):
 
 def uext2fuv(uext):
     """ gives the factor to multiply the fuv-flux with, dependign on u-band extiction in magnitudes"""
-    return 10**(1.66*uext/2.5))
+    return 10**(1.66*uext/2.5)
 
 
 #
