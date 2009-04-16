@@ -60,8 +60,10 @@ def plotAGN():
 
 def plot_z_fuv():
     conn,curs=setupdb('/home/tom/galex/data.db')
+    z,fuv=gettable(curs,'s.z,g.fuv_lum',table='sdss s, galex g',where='g.sid=s.objID AND g.fuv_corr NOT NULL AND s.z NOT NULL AND s.agn=1')
+    P.semilogy(z,fuv,'r,',label='agn')
     z,fuv=gettable(curs,'s.z,g.fuv_lum',table='sdss s, galex g',where='g.sid=s.objID AND g.fuv_corr NOT NULL AND s.z NOT NULL AND s.agn=0')
-    P.semilogy(z,fuv,'b,')
+    P.semilogy(z,fuv,'b,',label='not agn')
     P.xlabel('z')
     P.ylabel(r'L$_{FUV}$')
     conn.close()
