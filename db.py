@@ -85,15 +85,8 @@ def update(cols,line,cursor):
     cursor.execute('UPDATE sdss SET %s WHERE objID==%s'%(assignments[:-1],id))
 
 def setupdb(dbname=DBNAME):
-    if not exists(dbname): newdb=True
-    else: newdb=False
-
     connection=sqlite.connect(dbname)
     cursor=connection.cursor()
-
-    if newdb:
-        cursor.execute('CREATE TABLE sdss (objID INTEGER PRIMARY KEY)')
-        connection.commit()
 
     return connection,cursor
 

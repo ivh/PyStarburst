@@ -14,7 +14,7 @@ from numpy.ma import masked_where
 from numpy import pi
 from sdss import *
 
-
+DBNAME='data.db'
 
 def micJy2Watt(mJy,z,lambd):
     lambd*=1E-10
@@ -36,73 +36,220 @@ def uext2fuv(uext):
     """ gives the factor to multiply the fuv-flux with, dependign on u-band extiction in magnitudes"""
     return 10**(1.66*uext/2.5)
 
+def uext2nuv(uext):
+    """ gives the factor to multiply the fuv-flux with, dependign on u-band extiction in magnitudes"""
+    return 10**(1.66*uext/2.5)
+
 
 #
 # PLOTTING
 #
-   
-def plotAGN():
-    objID,specobjID,ra,dec,z,ext_u,Ha_w,Ha_h,Ha_s,Hb_h,OIII_h,NII_h=get_sdss()
-    
+def xyAGN(curs,where):
+    Ha_w,Ha_h,Ha_s,Hb_h,OIII_h,NII_h=gettable(curs,'Ha_w,Ha_h,Ha_s,Hb_h,OIII_h,NII_h',table='sdss',where=where)
     x=P.log10(NII_h/Ha_h)
     y=P.log10(OIII_h/Hb_h)
+    return x,y
+def plotAGN(curs):
+    x,y=xyAGN(curs,where='agn=1')
+    P.plot(x,y,'r,')
+    x,y=xyAGN(curs,where='agn=0')
+    P.plot(x,y,'b,')
+
+    x,y=xyAGN(curs,where='sid in (SELECT sid from mccand)')
+    P.plot(x,y,'ob')
+    x,y=xyAGN(curs,where='sid in (SELECT sid from green)')
+    P.plot(x,y,'*g')
+    x,y=xyAGN(curs,where='sid in (SELECT sid from heck3)')
+    P.plot(x,y,'sr')
+    x,y=xyAGN(curs,where='sid in (SELECT sid from heck2)')
+    P.plot(x,y,'Dr')
+    x,y=xyAGN(curs,where='sid in (SELECT sid from heck1)')
+    P.plot(x,y,'*r')
+
+    # plot the dividing line
     xl=P.arange(-1.7,-0.15,0.01)
     yl=sdss.mylee(xl)
-    P.plot(x,y,',',label='all 2011 objects')
-    broadx=N.where(Ha_s>5,N.log10(NII_h/Ha_h),0.0)
-    broady=N.where(Ha_s>5,N.log10(OIII_h/Hb_h),0.0)
-    P.plot(broadx,broady,'r,',label=r'sigma(H-alpha) > 5$\AA$')
-
     P.plot(xl,yl,'r-',linewidth=2)
-    P.legend()
     P.xlabel('log [NII]/Ha')
     P.ylabel('log [OIII]/Hb')
 
-def plot_z_fuv():
-    conn,curs=setupdb('/home/tom/galex/data.db')
-    z,fuv=gettable(curs,'s.z,g.fuv_lum',table='sdss s, galex g',where='g.sid=s.objID AND g.fuv_corr NOT NULL AND s.z NOT NULL AND s.agn=1')
-    P.semilogy(z,fuv,'r,',label='agn')
-    z,fuv=gettable(curs,'s.z,g.fuv_lum',table='sdss s, galex g',where='g.sid=s.objID AND g.fuv_corr NOT NULL AND s.z NOT NULL AND s.agn=0')
-    P.semilogy(z,fuv,'b,',label='not agn')
+def xyZFUV(curs,where):
+    return gettable(curs,'s.z,g.fuv_lum',table='sdss s, galex g',where='g.sid=s.sid AND g.fuv_corr NOT NULL AND s.z NOT NULL AND s.agn=0 AND %s'%where)
+def plot_z_fuv(curs):
+    z,fuv=xyZFUV(curs,'g.compact=0')
+    P.semilogy(z,fuv,'b,')
+    z,fuv=xyZFUV(curs,'g.compact=1')
+    P.semilogy(z,fuv,'y,')
+    z,fuv=xyZFUV(curs,'g.compact=2')
+    P.semilogy(z,fuv,'r,')
+    z,fuv=xyZFUV(curs,'s.sid IN (SELECT sid from mccand)')
+    P.semilogy(z,fuv,'ob')
+    z,fuv=xyZFUV(curs,'s.sid IN (SELECT sid from green)')
+    P.semilogy(z,fuv,'*g')
+    z,fuv=xyZFUV(curs,'s.sid IN (SELECT sid from heck3)')
+    P.semilogy(z,fuv,'sr')
+    z,fuv=xyZFUV(curs,'s.sid IN (SELECT sid from heck2)')
+    P.semilogy(z,fuv,'Dr')
+    z,fuv=xyZFUV(curs,'s.sid IN (SELECT sid from heck1)')
+    P.semilogy(z,fuv,'*r')
+    
+
     P.xlabel('z')
     P.ylabel(r'L$_{FUV}$')
-    conn.close()
+    #P.legend(loc='lower right')
 
+
+def xyHaLum(curs,where):
+    return gettable(curs,'s.Ha_w,g.fuv_lum',table='sdss s, galex g',where='g.sid=s.sid AND g.fuv_corr NOT NULL AND s.z NOT NULL AND s.agn=0 AND %s'%where)
+def plot_Ha_lum(curs):
+    Ha,fuv=xyHaLum(curs,'g.compact=0')
+    P.semilogy(Ha,fuv,'b,')
+    Ha,fuv=xyHaLum(curs,'g.compact=1')
+    P.loglog(Ha,fuv,'y,')
+    Ha,fuv=xyHaLum(curs,'g.compact=2')
+    P.loglog(Ha,fuv,'r,')
+    Ha,fuv=xyHaLum(curs,'s.sid IN (SELECT sid from mccand)')
+    P.loglog(Ha,fuv,'bo')
+    Ha,fuv=xyHaLum(curs,'s.sid IN (SELECT sid from green)')
+    P.loglog(Ha,fuv,'*g')
+    Ha,fuv=xyHaLum(curs,'s.sid IN (SELECT sid from heck3)')
+    P.loglog(Ha,fuv,'sr')
+    Ha,fuv=xyHaLum(curs,'s.sid IN (SELECT sid from heck2)')
+    P.loglog(Ha,fuv,'Dr')
+    Ha,fuv=xyHaLum(curs,'s.sid IN (SELECT sid from heck1)')
+    P.loglog(Ha,fuv,'*r')
+    P.xlabel('Ha_W')
+    P.ylabel(r'L$_{FUV}$')
+    P.legend(loc='lower right')
+
+
+def xyHaInt(curs,where):
+    return gettable(curs,'s.Ha_w,g.fuv_int',table='sdss s, galex g',where='g.sid=s.sid AND g.fuv_corr NOT NULL AND s.z NOT NULL AND s.agn=0 AND %s'%where)
+def plot_Ha_int(curs):
+    Ha,fuv=xyHaInt(curs,'g.compact=0')
+    P.loglog(Ha,fuv,'b,')
+    Ha,fuv=xyHaInt(curs,'g.compact=1')
+    P.loglog(Ha,fuv,'y,')
+    Ha,fuv=xyHaInt(curs,'g.compact=2')
+    P.loglog(Ha,fuv,'r,')
+    Ha,fuv=xyHaInt(curs,'s.sid IN (SELECT sid from mccand)')
+    P.loglog(Ha,fuv,'bo')
+    Ha,fuv=xyHaInt(curs,'s.sid IN (SELECT sid from green)')
+    P.loglog(Ha,fuv,'*g')
+    Ha,fuv=xyHaInt(curs,'s.sid IN (SELECT sid from heck3)')
+    P.loglog(Ha,fuv,'sr')
+    Ha,fuv=xyHaInt(curs,'s.sid IN (SELECT sid from heck2)')
+    P.loglog(Ha,fuv,'Dr')
+    Ha,fuv=xyHaInt(curs,'s.sid IN (SELECT sid from heck1)')
+    P.loglog(Ha,fuv,'*r')
+    P.xlabel('Ha_W')
+    P.ylabel(r'I$_{FUV}$')
+    P.legend(loc='lower right')
+    
+def xyHaBeta(curs,where):
+    return gettable(curs,'s.Ha_w,g.beta',table='sdss s, galex g',where='g.sid=s.sid AND g.fuv_corr NOT NULL AND s.z NOT NULL AND s.agn=0 AND %s'%where)
+def plot_Ha_beta(curs):
+    Ha,beta=xyHaBeta(curs,'g.compact=0')
+    P.semilogx(Ha,beta,'b,')
+    Ha,beta=xyHaBeta(curs,'g.compact=1')
+    P.semilogx(Ha,beta,'y,')
+    Ha,beta=xyHaBeta(curs,'g.compact=2')
+    P.semilogx(Ha,beta,'r,')
+    Ha,beta=xyHaBeta(curs,'s.sid IN (SELECT sid from mccand)')
+    P.semilogx(Ha,beta,'bo')
+    Ha,beta=xyHaBeta(curs,'s.sid IN (SELECT sid from green)')
+    P.semilogx(Ha,beta,'*g')
+    Ha,beta=xyHaBeta(curs,'s.sid IN (SELECT sid from heck3)')
+    P.semilogx(Ha,beta,'sr')
+    Ha,beta=xyHaBeta(curs,'s.sid IN (SELECT sid from heck2)')
+    P.semilogx(Ha,beta,'Dr')
+    Ha,beta=xyHaBeta(curs,'s.sid IN (SELECT sid from heck1)')
+    P.semilogx(Ha,beta,'*r')
+    P.xlabel('Ha_W')
+    P.ylabel('beta')
+
+def xylumBeta(curs,where):
+    return gettable(curs,'g.fuv_lum,g.beta',table='sdss s, galex g',where='g.sid=s.sid AND g.fuv_corr NOT NULL AND s.z NOT NULL AND s.agn=0 AND %s'%where)
+def plot_lum_beta(curs):
+    lum,beta=xylumBeta(curs,'g.compact=0')
+    P.semilogx(lum,beta,'b,')
+    lum,beta=xylumBeta(curs,'g.compact=1')
+    P.semilogx(lum,beta,'y,')
+    lum,beta=xylumBeta(curs,'g.compact=2')
+    P.semilogx(lum,beta,'r,')
+    lum,beta=xylumBeta(curs,'s.sid IN (SELECT sid from mccand)')
+    P.semilogx(lum,beta,'bo')
+    lum,beta=xylumBeta(curs,'s.sid IN (SELECT sid from green)')
+    P.semilogx(lum,beta,'*g')
+    lum,beta=xylumBeta(curs,'s.sid IN (SELECT sid from heck3)')
+    P.semilogx(lum,beta,'sr')
+    lum,beta=xylumBeta(curs,'s.sid IN (SELECT sid from heck2)')
+    P.semilogx(lum,beta,'Dr')
+    lum,beta=xylumBeta(curs,'s.sid IN (SELECT sid from heck1)')
+    P.semilogx(lum,beta,'*r')
+    P.xlabel(r'L$_{FUV}$')
+    P.ylabel('beta')
+
+def plotall(curs):
+    P.clf()
+    P.subplot(231)
+    plotAGN(curs)
+    P.subplot(232)
+    plot_z_fuv(curs)
+    P.subplot(233)
+    plot_Ha_lum(curs)
+    P.subplot(234)
+    plot_Ha_int(curs)
+    P.subplot(235)
+    plot_Ha_beta(curs)
+    P.subplot(236)
+    plot_lum_beta(curs)
 
 #
 # FILLING CERTAIN DATABASE-TABLES
 #
 
-def fill_ext():
-    conn,curs=setupdb('/home/tom/galex/data.db')
-    query=curs.execute("SELECT g.sid,g.gid,s.extinction_u,g.fuv_flux FROM sdss s, galex g WHERE g.sid=s.objID")
+def fill_ext(curs):
+    query=curs.execute("SELECT g.sid,g.gid,s.ext_u,g.fuv FROM sdss s, galex g WHERE g.sid=s.sid")
     for sid,gid,ext,fuv in query.fetchall():
         que="UPDATE galex SET fuv_corr=%f WHERE gid=%d"%(fuv*uext2fuv(ext),gid)
         curs.execute(que)
-    conn.commit()
-    conn.close()
-
-def fill_fuv_lum():
-    conn,curs=setupdb('/home/tom/galex/data.db')
-    query=curs.execute("SELECT g.sid,g.gid,s.extinction_u,g.fuv_corr,s.z FROM sdss s, galex g WHERE g.sid=s.objID")
+    
+def fill_fuv_lum(curs):
+    query=curs.execute("SELECT g.sid,g.gid,s.ext_u,g.fuv_corr,s.z FROM sdss s, galex g WHERE g.sid=s.sid")
     for sid,gid,ext,fuv,z in query.fetchall():
         que="UPDATE galex SET fuv_lum=%f WHERE gid=%d"%(micJy2SolarLum(fuv,z),gid)
         curs.execute(que)
-    conn.commit()
-    conn.close()
-
-def fill_Ha_lum():
-    conn,curs=setupdb('/home/tom/galex/data.db')
-    query=curs.execute("SELECT objID,z,Ha_h,Ha_s FROM sdss")
+    
+def fill_fuv_int(curs):
+    query=curs.execute("SELECT g.sid,g.gid,g.fuv_lum,s.z,s.petroR50_u FROM sdss s, galex g WHERE g.sid=s.sid")
+    for sid,gid,fuv_lum,z,r in query.fetchall():
+        fuv_int=fuv_lum/ (N.pi * (r**2))
+        #print fuv_lum,fuv_int
+        curs.execute("UPDATE galex SET fuv_int=%f WHERE gid=%d"%(fuv_int,gid))
+        if fuv_int>10**9:
+            curs.execute("UPDATE galex SET compact=2 WHERE gid=%d"%gid)
+        elif fuv_int>10**8:
+            curs.execute("UPDATE galex SET compact=1 WHERE gid=%d"%gid)
+        else:
+            curs.execute("UPDATE galex SET compact=0 WHERE gid=%d"%gid)
+    
+def fill_Ha_lum(curs):
+    query=curs.execute("SELECT sid,z,Ha_h,Ha_s FROM sdss")
     for id,z,height,width in query.fetchall():
-        que="UPDATE sdss SET Ha_lum=%f WHERE objID=%d"%(sdssflux2Watt(height,width,z)/3.846E26,id) # IN SOLAR LUMINOSITIES
+        que="UPDATE sdss SET Ha_lum=%f WHERE sid=%d"%(sdssflux2Watt(height,width,z)/3.846E26,id) # IN SOLAR LUMINOSITIES
         curs.execute(que)
-    conn.commit()
-    conn.close()
-
-def fill_agn():
-    conn,curs=setupdb('/home/tom/galex/data.db')
-    ids=gettable(curs,cols='objid',where='(Ha_h >0) AND (Hb_h>0) AND (OIII_h>0) AND (NII_h>0)',table='sdss')[0]
+    
+def fill_beta(curs):
+    query=curs.execute("SELECT gid,fuv,nuv FROM galex")
+    c=N.log10(1530.0/2270.0)
+    for id,fuv,nuv in query.fetchall():
+        beta=-1*N.log10(fuv/nuv) /c
+        #print fuv,nuv,beta
+        curs.execute("UPDATE galex SET beta=%f WHERE gid=%d"%(beta,id))
+    
+def fill_agn(curs):
+    ids=gettable(curs,cols='sid',where='(Ha_h >0) AND (Hb_h>0) AND (OIII_h>0) AND (NII_h>0)',table='sdss')[0]
     x,y,sig=gettable(curs,cols='NII_h/Ha_h,OIII_h/Hb_h,Ha_s',where='(Ha_h >0) AND (Hb_h>0) AND (OIII_h>0) AND (NII_h>0)',table='sdss')
     x=N.log10(N.array(x))
     y=N.log10(N.array(y))
@@ -110,15 +257,90 @@ def fill_agn():
     for i,id in enumerate(ids):
         #print id,y[i],limit[i]
         if (y[i]<limit[i]) and (sig[i] < 5):
-            curs.execute("UPDATE sdss SET agn=0 WHERE objid=%s"%(id,))
+            curs.execute("UPDATE sdss SET agn=0 WHERE sid=%s"%(id,))
         else:
-            print x[i],y[i],limit[i],sig[i]
-            curs.execute("UPDATE sdss SET agn=1 WHERE objid=%s"%(id,))
+            #print x[i],y[i],limit[i],sig[i]
+            curs.execute("UPDATE sdss SET agn=1 WHERE sid=%s"%(id,))
+
+
+
+def fill_galex(curs,galex):
+    """
+    galex columns:sid,gid,distance,xnum,fuv,nuv
+    
+    """
+    sid,gid,xnum=N.loadtxt(galex,skiprows=1,unpack=True,dtype='S',delimiter=',',usecols=(0,1,3))
+    distance,fuv,nuv=N.loadtxt(galex,skiprows=1,unpack=True,dtype='Float64',delimiter=',',usecols=(2,4,5))
+    curs.execute('CREATE TABLE IF NOT EXISTS galex (gid INTEGER, sid INTEGER, fuv REAL, nuv REAL, xnum INTEGER, distance REAL, fuv_corr REAL, fuv_lum REAL, fuv_int REAL, compact INTEGER, beta REAL);')
+    for i,id in enumerate(gid):
+        d=(id,sid[i],fuv[i],nuv[i],xnum[i],distance[i])
+        if (fuv[i]>0) and (nuv[i]>0):
+            curs.execute('INSERT INTO galex VALUES (%s,%s,%f,%f,%s,%f,NULL, NULL, NULL, NULL, NULL);'%d)
+    
+def fill_sdss(curs,sdss):
+    """
+    sdss columns: objID,specobjID,ra,dec,z,mag_u,mag_g,mag_r,mag_i,mag_z,petroRad_u,petroR50_u,extinction_u,isoA_u,isoB_u,Ha_w,Ha_h,Ha_s,Hb_h,OIII_h,NII_h
+    """
+    objID,specobjID=N.loadtxt(sdss,skiprows=1,unpack=True,dtype='S',delimiter=',',usecols=(0,1))
+    ra,dec,z,mag_u,mag_g,mag_r,mag_i,mag_z,petroRad_u,petroR50_u,extinction_u,isoA_u,isoB_u,Ha_w,Ha_h,Ha_s,Hb_h,OIII_h,NII_h=N.loadtxt(sdss,skiprows=1,unpack=True,dtype='Float64',delimiter=',',usecols=tuple(N.arange(19)+2))
+    curs.execute('CREATE TABLE IF NOT EXISTS sdss (sid INTEGER, specid INTEGER, ra REAL, dec REAL, z REAL, mag_u REAL, mag_g REAL, mag_r REAL, mag_i REAL, mag_z REAL, petroRad_u REAL, petroR50_u REAL, ext_u REAL, isoA_u REAL, isoB_u REAL, Ha_w REAL, Ha_h REAL, Ha_s REAL, Hb_h REAL, OIII_h REAL, NII_h REAL, agn INTEGER, Ha_lum REAL);')
+    for i,id in enumerate(objID):
+        d=(id,specobjID[i],ra[i],dec[i],z[i],mag_u[i],mag_g[i],mag_r[i],mag_i[i],mag_z[i],petroRad_u[i],petroR50_u[i],extinction_u[i],isoA_u[i],isoB_u[i],Ha_w[i],Ha_h[i],Ha_s[i],Hb_h[i],OIII_h[i],NII_h[i])
+        curs.execute('INSERT INTO sdss VALUES (%s,%s,%f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, NULL, NULL);'%d)
+
+def makedb(dbname=DBNAME):
+    conn,curs=setupdb(dbname)
+    fill_galex(curs,'galex.csv')
+    conn.commit()
+    fill_sdss(curs,'sdss.csv')
+    conn.commit()
+
+    fill_galex(curs,'galex_foreign.csv')
+    fill_sdss(curs,'sdss_foreign.csv')
+    conn.commit()
+
+    # get the "external" runs in..
+    for run in ['green','mccand','heck1','heck2','heck3']:
+        curs.execute('CREATE TABLE %s (sid INTEGER);'%run)
+        sid=N.loadtxt('%s_targets'%run,skiprows=1,unpack=True,dtype='S',usecols=(0,))
+        for id in sid:
+            curs.execute('INSERT INTO %s VALUES (%s)'%(run,id))
+    conn.commit()
+                         
+    # do the work
+    fill_agn(curs)
+    fill_beta(curs)
+    fill_ext(curs)
+    fill_fuv_lum(curs)
+    fill_fuv_int(curs)
 
     conn.commit()
-    conn.close()
 
-
+def dump_foreign(curs,outfile='foreign.html'):
+    urlbase='http://cas.sdss.org/dr7/en/tools/explore/obj.asp?id='
+    wanted='s.sid, s.z, g.fuv_lum, g.fuv_int, g.beta, s.agn, s.Ha_w, s.Ha_s, s.Ha_h,s.Hb_h,s.OIII_h,s.NII_h'
+    wanto=wanted.replace('s.','').replace('g.','')
+    wants=wanto.split(',')
+    f=open(outfile,'w')
+    f.write('<table border=1><th>\n')
+    for run in ['green','mccand','heck1','heck2','heck3']:
+        f.write('<tr><td colspan=6><strong>%s</strong></td></tr><tr>'%run)
+        for w in wants[:-4]: f.write('<td>%s</td>'%w)
+        f.write('<td>log(NII/Ha)</td><td>log(OIII/Hb)</td></tr>')
+        curs.execute('SELECT DISTINCT %s FROM sdss s, galex g WHERE g.sid=s.sid AND (s.sid in (SELECT sid from %s)) ORDER BY s.sid'%(wanted,run))
+        data=curs.fetchall()
+        for sid,z,fuv_lum,fuv_int,beta,agn,Ha_w,Ha_s,Ha_h,Hb_h,OIII_h,NII_h in data:
+            f.write('<tr>')
+            f.write('<td><a href="%s">%s</a></td>'%(urlbase+str(sid),str(sid)))
+            f.write('<td>%.3f</td><td>%.2e</td><td>%.2e</td>'%(z,fuv_lum,fuv_int))
+            f.write('<td>%.2f</td><td>%s</td>'%(beta,str(agn)))
+            f.write('<td>%.1f</td><td>%.1f</td>'%(Ha_w,Ha_s))
+            x,y=P.log10(NII_h/Ha_h),P.log10(OIII_h/Hb_h)
+            f.write('<td>%.2f</td><td>%.2f</td>'%(x,y))
+            
+            f.write('</tr>')
+        f.write('<tr><td colspan=6>&nbsp;</td></tr>')
+    f.close()
 
 #
 # READ FILES (obsolete)

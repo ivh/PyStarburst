@@ -151,6 +151,11 @@ def distanceInMeter(z):
     dist=(z * c / H0) * 3.0856776e+22 
     return dist.astype('Float64')
 
+def arcsec2meter(arcsec,z):
+    D=distanceInMeter(z)
+    a=N.radians(arcsec/3600.)
+    return a*D
+    
 def sfr(Ha_h,Ha_s,z,ec):
     return Ha_h*1E-20 *Kms2Ang(Ha_s,z)*N.sqrt(2*P.pi) *4*P.pi*distanceInMeter(z)**2 / 1.51e34 * (10**(0.4*extcorr(ec,'r')))
 
