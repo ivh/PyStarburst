@@ -225,7 +225,6 @@ def fill_fuv_int(curs):
     query=curs.execute("SELECT g.sid,g.gid,g.fuv_lum,s.z,s.petroR50_u FROM sdss s, galex g WHERE g.sid=s.sid")
     for sid,gid,fuv_lum,z,r in query.fetchall():
         fuv_int=fuv_lum/ (N.pi * (r**2))
-        #print fuv_lum,fuv_int
         curs.execute("UPDATE galex SET fuv_int=%f WHERE gid=%d"%(fuv_int,gid))
         if fuv_int>10**9:
             curs.execute("UPDATE galex SET compact=2 WHERE gid=%d"%gid)
@@ -243,8 +242,9 @@ def fill_Ha_lum(curs):
 def fill_beta(curs):
     query=curs.execute("SELECT gid,fuv,nuv FROM galex")
     c=N.log10(1530.0/2270.0)
+    d=(2270.0/1530.0)**2
     for id,fuv,nuv in query.fetchall():
-        beta=-1*N.log10(fuv/nuv) /c
+        beta=-1*N.log10(fuv/nuv*d) /c
         #print fuv,nuv,beta
         curs.execute("UPDATE galex SET beta=%f WHERE gid=%d"%(beta,id))
     
@@ -279,14 +279,14 @@ def fill_galex(curs,galex):
     
 def fill_sdss(curs,sdss):
     """
-    sdss columns: objID,specobjID,ra,dec,z,mag_u,mag_g,mag_r,mag_i,mag_z,petroRad_u,petroR50_u,extinction_u,isoA_u,isoB_u,Ha_w,Ha_h,Ha_s,Hb_h,OIII_h,NII_h
+    sdss columns: objID,specobjID,ra,dec,l,b,z,mag_u,mag_g,mag_r,mag_i,mag_z,petroRad_u,petroR50_u,extinction_u,isoA_u,isoB_u,Ha_w,Ha_h,Ha_s,Hb_h,OIII_h,NII_h
     """
     objID,specobjID=N.loadtxt(sdss,skiprows=1,unpack=True,dtype='S',delimiter=',',usecols=(0,1))
-    ra,dec,z,mag_u,mag_g,mag_r,mag_i,mag_z,petroRad_u,petroR50_u,extinction_u,isoA_u,isoB_u,Ha_w,Ha_h,Ha_s,Hb_h,OIII_h,NII_h=N.loadtxt(sdss,skiprows=1,unpack=True,dtype='Float64',delimiter=',',usecols=tuple(N.arange(19)+2))
-    curs.execute('CREATE TABLE IF NOT EXISTS sdss (sid INTEGER, specid INTEGER, ra REAL, dec REAL, z REAL, mag_u REAL, mag_g REAL, mag_r REAL, mag_i REAL, mag_z REAL, petroRad_u REAL, petroR50_u REAL, ext_u REAL, isoA_u REAL, isoB_u REAL, Ha_w REAL, Ha_h REAL, Ha_s REAL, Hb_h REAL, OIII_h REAL, NII_h REAL, agn INTEGER, Ha_lum REAL);')
+    ra,dec,l,b,z,mag_u,mag_g,mag_r,mag_i,mag_z,petroRad_u,petroR50_u,extinction_u,isoA_u,isoB_u,Ha_w,Ha_h,Ha_s,Hb_h,OIII_h,NII_h=N.loadtxt(sdss,skiprows=1,unpack=True,dtype='Float64',delimiter=',',usecols=tuple(N.arange(21)+2))
+    curs.execute('CREATE TABLE IF NOT EXISTS sdss (sid INTEGER, specid INTEGER, ra REAL, dec REAL, l REAL, b REAL, z REAL, mag_u REAL, mag_g REAL, mag_r REAL, mag_i REAL, mag_z REAL, petroRad_u REAL, petroR50_u REAL, ext_u REAL, isoA_u REAL, isoB_u REAL, Ha_w REAL, Ha_h REAL, Ha_s REAL, Hb_h REAL, OIII_h REAL, NII_h REAL, agn INTEGER, Ha_lum REAL);')
     for i,id in enumerate(objID):
-        d=(id,specobjID[i],ra[i],dec[i],z[i],mag_u[i],mag_g[i],mag_r[i],mag_i[i],mag_z[i],petroRad_u[i],petroR50_u[i],extinction_u[i],isoA_u[i],isoB_u[i],Ha_w[i],Ha_h[i],Ha_s[i],Hb_h[i],OIII_h[i],NII_h[i])
-        curs.execute('INSERT INTO sdss VALUES (%s,%s,%f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, NULL, NULL);'%d)
+        d=(id,specobjID[i],ra[i],dec[i],l[i],b[i],z[i],mag_u[i],mag_g[i],mag_r[i],mag_i[i],mag_z[i],petroRad_u[i],petroR50_u[i],extinction_u[i],isoA_u[i],isoB_u[i],Ha_w[i],Ha_h[i],Ha_s[i],Hb_h[i],OIII_h[i],NII_h[i])
+        curs.execute('INSERT INTO sdss VALUES (%s,%s,%f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, NULL, NULL);'%d)
 
 def makedb(dbname=DBNAME):
     conn,curs=setupdb(dbname)
@@ -316,6 +316,31 @@ def makedb(dbname=DBNAME):
 
     conn.commit()
 
+def dump_selection(curs,outfile='selection.html',where=''):
+    urlbase='http://cas.sdss.org/dr7/en/tools/explore/obj.asp?id='
+    wanted='s.sid, s.z, g.fuv_lum, g.fuv_int, g.beta, s.agn, s.Ha_w, s.Ha_s, s.Ha_h,s.Hb_h,s.OIII_h,s.NII_h'
+    wanto=wanted.replace('s.','').replace('g.','')
+    wants=wanto.split(',')
+    f=open(outfile,'w')
+    f.write('<table border=1>\n')
+    for w in wants[:-4]: f.write('<td>%s</td>'%w)
+    f.write('<td>log(NII/Ha)</td><td>log(OIII/Hb)</td></tr>')
+    if where !='': where='AND %s'%where
+    curs.execute('SELECT DISTINCT %s FROM sdss s, galex g WHERE g.sid=s.sid %s ORDER BY s.z'%(wanted,where))
+    data=curs.fetchall()
+    for sid,z,fuv_lum,fuv_int,beta,agn,Ha_w,Ha_s,Ha_h,Hb_h,OIII_h,NII_h in data:
+        f.write('<tr>')
+        f.write('<td><a href="%s">%s</a></td>'%(urlbase+str(sid),str(sid)))
+        f.write('<td>%.3f</td><td>%.3f</td><td>%.3f</td>'%(z,N.log10(fuv_lum),N.log10(fuv_int)))
+        f.write('<td>%.2f</td><td>%s</td>'%(beta,str(agn)))
+        f.write('<td>%.1f</td><td>%.1f</td>'%(Ha_w,Ha_s))
+        x,y=P.log10(NII_h/Ha_h),P.log10(OIII_h/Hb_h)
+        f.write('<td>%.2f</td><td>%.2f</td>'%(x,y))
+            
+        f.write('</tr>')
+    f.close()
+
+
 def dump_foreign(curs,outfile='foreign.html'):
     urlbase='http://cas.sdss.org/dr7/en/tools/explore/obj.asp?id='
     wanted='s.sid, s.z, g.fuv_lum, g.fuv_int, g.beta, s.agn, s.Ha_w, s.Ha_s, s.Ha_h,s.Hb_h,s.OIII_h,s.NII_h'
@@ -332,7 +357,7 @@ def dump_foreign(curs,outfile='foreign.html'):
         for sid,z,fuv_lum,fuv_int,beta,agn,Ha_w,Ha_s,Ha_h,Hb_h,OIII_h,NII_h in data:
             f.write('<tr>')
             f.write('<td><a href="%s">%s</a></td>'%(urlbase+str(sid),str(sid)))
-            f.write('<td>%.3f</td><td>%.2e</td><td>%.2e</td>'%(z,fuv_lum,fuv_int))
+            f.write('<td>%.3f</td><td>%.3f</td><td>%.3f</td>'%(z,N.log10(fuv_lum),N.log10(fuv_int)))
             f.write('<td>%.2f</td><td>%s</td>'%(beta,str(agn)))
             f.write('<td>%.1f</td><td>%.1f</td>'%(Ha_w,Ha_s))
             x,y=P.log10(NII_h/Ha_h),P.log10(OIII_h/Hb_h)
