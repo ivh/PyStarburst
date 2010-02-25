@@ -92,13 +92,20 @@ def plot_z_fuv(curs):
     P.semilogy(z,fuv,'Dr')
     z,fuv=xyZFUV(curs,'s.sid IN (SELECT sid from heck1)')
     P.semilogy(z,fuv,'*r')
-    
-
     P.xlabel('z')
     P.ylabel(r'L$_{FUV}$')
     #P.legend(loc='lower right')
 
-
+def plot_z_fuv_prop(curs):
+    z,fuv=xyZFUV(curs,'s.agn=0')
+    P.semilogy(z,fuv,'k,',alpha=0.1)
+    z,fuv=xyZFUV(curs,'s.sid IN (SELECT sid from sel)')
+    P.semilogy(z,fuv,'ob')
+    z,fuv=xyZFUV(curs,'s.sid IN (SELECT sid from sel) AND (s.sid IN (SELECT sid from heck3) OR s.sid IN (SELECT sid from heck2) OR s.sid IN (SELECT sid from heck1) OR s.sid IN (SELECT sid from green) OR s.sid IN (SELECT sid from mccand))')
+    P.semilogy(z,fuv,'or')
+    P.xlabel('z')
+    P.ylabel(r'L$_{FUV}$')
+    
 def xyHaLum(curs,where):
     return gettable(curs,'s.Ha_w,g.fuv_lum',table='sdss s, galex g',where='g.sid=s.sid AND g.fuv_corr NOT NULL AND s.z NOT NULL AND s.agn=0 AND %s'%where)
 def plot_Ha_lum(curs):
@@ -122,6 +129,16 @@ def plot_Ha_lum(curs):
     P.ylabel(r'L$_{FUV}$')
     P.legend(loc='lower right')
 
+def plot_LyHa_prop(curs):
+    Ha,fuv=xyHaLum(curs,'s.agn=0')
+    P.loglog(Ha,fuv,',k',alpha=0.1)
+    Ha,fuv=xyHaLum(curs,'s.sid IN (SELECT sid from sel)')
+    P.loglog(Ha,fuv,'bo')
+    Ha,fuv=xyHaLum(curs,'s.sid IN (SELECT sid from sel) AND (s.sid IN (SELECT sid from heck3) OR s.sid IN (SELECT sid from heck2) OR s.sid IN (SELECT sid from heck1) OR s.sid IN (SELECT sid from green) OR s.sid IN (SELECT sid from mccand))')
+    P.loglog(Ha,fuv,'ro')
+    P.xlabel(r'W(H$_\alpha$)')
+    P.ylabel(r'L$_{FUV}$')
+
 
 def xyHaInt(curs,where):
     return gettable(curs,'s.Ha_w,g.fuv_int',table='sdss s, galex g',where='g.sid=s.sid AND g.fuv_corr NOT NULL AND s.z NOT NULL AND s.agn=0 AND %s'%where)
@@ -142,7 +159,7 @@ def plot_Ha_int(curs):
     P.loglog(Ha,fuv,'Dr')
     Ha,fuv=xyHaInt(curs,'s.sid IN (SELECT sid from heck1)')
     P.loglog(Ha,fuv,'*r')
-    P.xlabel('Ha_W')
+    P.xlabel(r'W(H$_\alpha$)')
     P.ylabel(r'I$_{FUV}$')
     P.legend(loc='lower right')
     
@@ -190,6 +207,13 @@ def plot_lum_beta(curs):
     P.xlabel(r'L$_{FUV}$')
     P.ylabel('beta')
 
+def plotprop(curs):
+    P.clf()
+    ax1=P.subplot(121)
+    plot_z_fuv_prop(curs)
+    ax2=P.subplot(122,sharey=ax1)
+    plot_LyHa_prop(curs)
+
 def plotall(curs):
     P.clf()
     P.subplot(231)
@@ -204,6 +228,41 @@ def plotall(curs):
     plot_Ha_beta(curs)
     P.subplot(236)
     plot_lum_beta(curs)
+
+def plotselimages(curs):
+    import Image
+    P.clf()
+    P.subplots_adjust(0.01,0.01,0.99,0.99,0.02,0.02)
+    curs.execute('SELECT DISTINCT sid,z,Ha_w from sdss WHERE (sid IN (SELECT sid FROM sel)) ORDER BY z')
+    data=curs.fetchall()
+    i=1
+    for sid,z,ha in data:
+        ax=P.subplot(3,5,i,frameon=False)
+        ax.set_axis_off()
+        P.imshow(Image.open('%s.jpg'%str(sid)),origin='lower')
+        P.text(5,10,str(sid),fontsize=8,color='w')
+        P.text(180,233,'$z:\\, %.3f$'%z,fontsize=11,color='w')
+        P.text(5,226,'$W(H_\\alpha):\\, %d \\AA$'%ha,fontsize=11,color='w')
+        curs.execute('SELECT fuv_lum from galex WHERE sid=%s'%str(sid))
+        fuv=N.max(curs.fetchall())
+        fu1,fu2=('%.1e'%fuv).split('e')
+        P.text(5,200,'$L_{FUV}:\\, %s\\times 10^{%d} L_\\odot $'%(fu1,int(fu2)),fontsize=11,color='w')
+        i+=1
+    print i
+
+def getselimages(curs):
+    url='http://casjobs.sdss.org/ImgCutoutDR7/getjpeg.aspx?ra=%s&dec=%s&scale=0.19806&width=256&height=256'
+
+    from urllib import urlopen as get
+    curs.execute('SELECT sid,ra,dec from sdss WHERE sid IN (SELECT sid FROM sel)')
+    data=curs.fetchall()
+    for sid,ra,dec in data:
+        im=get(url%(ra,dec))
+        f=open('%s.jpg'%str(sid),'w')
+        f.write(im.read())
+        f.close()
+        im.close()
+    
 
 #
 # FILLING CERTAIN DATABASE-TABLES
@@ -300,7 +359,7 @@ def makedb(dbname=DBNAME):
     conn.commit()
 
     # get the "external" runs in..
-    for run in ['green','mccand','heck1','heck2','heck3']:
+    for run in ['green','mccand','heck1','heck2','heck3','sel']:
         curs.execute('CREATE TABLE %s (sid INTEGER);'%run)
         sid=N.loadtxt('%s_targets'%run,skiprows=1,unpack=True,dtype='S',usecols=(0,))
         for id in sid:
