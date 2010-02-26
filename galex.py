@@ -229,6 +229,17 @@ def plotall(curs):
     P.subplot(236)
     plot_lum_beta(curs)
 
+def detcolor(curs,sid):
+    curs.execute('select sid from green where sid="%d"'%sid)
+    if curs.fetchone(): return 'g'
+    curs.execute('select sid from mccand where sid="%d"'%sid)
+    if curs.fetchone(): return 'r'
+    curs.execute('select sid from heck where sid="%d"'%sid)
+    if curs.fetchone(): return 'b'
+
+    return 'y'
+    
+
 def plotselimages(curs):
     import Image
     P.clf()
@@ -240,13 +251,13 @@ def plotselimages(curs):
         ax=P.subplot(3,5,i,frameon=False)
         ax.set_axis_off()
         P.imshow(Image.open('%s.jpg'%str(sid)),origin='lower')
-        P.text(5,10,str(sid),fontsize=8,color='w')
+        color=detcolor(curs,sid)
+        P.text(6,3,'$\mathbf{%d}$'%i,fontsize=18,color=color)
         P.text(180,233,'$z:\\, %.3f$'%z,fontsize=11,color='w')
         P.text(5,226,'$W(H_\\alpha):\\, %d \\AA$'%ha,fontsize=11,color='w')
         curs.execute('SELECT fuv_lum from galex WHERE sid=%s'%str(sid))
         fuv=N.max(curs.fetchall())
-        fu1,fu2=('%.1e'%fuv).split('e')
-        P.text(5,200,'$L_{FUV}:\\, %s\\times 10^{%d} L_\\odot $'%(fu1,int(fu2)),fontsize=11,color='w')
+        P.text(5,200,'$\log(L_{FUV}):\\, %.2f $'%N.log10(fuv),fontsize=11,color='w')
         i+=1
     print i
 
@@ -364,6 +375,7 @@ def makedb(dbname=DBNAME):
         sid=N.loadtxt('%s_targets'%run,skiprows=1,unpack=True,dtype='S',usecols=(0,))
         for id in sid:
             curs.execute('INSERT INTO %s VALUES (%s)'%(run,id))
+    curs.execute('create view heck as select * from heck1 union select * from heck2 union select * from heck3')
     conn.commit()
                          
     # do the work
