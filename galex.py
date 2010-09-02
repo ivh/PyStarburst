@@ -92,13 +92,20 @@ def plot_z_fuv(curs):
     P.semilogy(z,fuv,'Dr')
     z,fuv=xyZFUV(curs,'s.sid IN (SELECT sid from heck1)')
     P.semilogy(z,fuv,'*r')
-    
-
     P.xlabel('z')
     P.ylabel(r'L$_{FUV}$')
     #P.legend(loc='lower right')
 
-
+def plot_z_fuv_prop(curs):
+    z,fuv=xyZFUV(curs,'s.agn=0')
+    P.semilogy(z,fuv,'k,',alpha=0.1)
+    z,fuv=xyZFUV(curs,'s.sid IN (SELECT sid from sel)')
+    P.semilogy(z,fuv,'ob')
+    z,fuv=xyZFUV(curs,'s.sid IN (SELECT sid from sel) AND (s.sid IN (SELECT sid from heck3) OR s.sid IN (SELECT sid from heck2) OR s.sid IN (SELECT sid from heck1) OR s.sid IN (SELECT sid from green) OR s.sid IN (SELECT sid from mccand))')
+    P.semilogy(z,fuv,'or')
+    P.xlabel('z')
+    P.ylabel(r'L$_{FUV}$')
+    
 def xyHaLum(curs,where):
     return gettable(curs,'s.Ha_w,g.fuv_lum',table='sdss s, galex g',where='g.sid=s.sid AND g.fuv_corr NOT NULL AND s.z NOT NULL AND s.agn=0 AND %s'%where)
 def plot_Ha_lum(curs):
@@ -122,6 +129,16 @@ def plot_Ha_lum(curs):
     P.ylabel(r'L$_{FUV}$')
     P.legend(loc='lower right')
 
+def plot_LyHa_prop(curs):
+    Ha,fuv=xyHaLum(curs,'s.agn=0')
+    P.loglog(Ha,fuv,',k',alpha=0.1)
+    Ha,fuv=xyHaLum(curs,'s.sid IN (SELECT sid from sel)')
+    P.loglog(Ha,fuv,'bo')
+    Ha,fuv=xyHaLum(curs,'s.sid IN (SELECT sid from sel) AND (s.sid IN (SELECT sid from heck3) OR s.sid IN (SELECT sid from heck2) OR s.sid IN (SELECT sid from heck1) OR s.sid IN (SELECT sid from green) OR s.sid IN (SELECT sid from mccand))')
+    P.loglog(Ha,fuv,'ro')
+    P.xlabel(r'W(H$_\alpha$)')
+    P.ylabel(r'L$_{FUV}$')
+
 
 def xyHaInt(curs,where):
     return gettable(curs,'s.Ha_w,g.fuv_int',table='sdss s, galex g',where='g.sid=s.sid AND g.fuv_corr NOT NULL AND s.z NOT NULL AND s.agn=0 AND %s'%where)
@@ -142,7 +159,7 @@ def plot_Ha_int(curs):
     P.loglog(Ha,fuv,'Dr')
     Ha,fuv=xyHaInt(curs,'s.sid IN (SELECT sid from heck1)')
     P.loglog(Ha,fuv,'*r')
-    P.xlabel('Ha_W')
+    P.xlabel(r'W(H$_\alpha$)')
     P.ylabel(r'I$_{FUV}$')
     P.legend(loc='lower right')
     
@@ -190,6 +207,13 @@ def plot_lum_beta(curs):
     P.xlabel(r'L$_{FUV}$')
     P.ylabel('beta')
 
+def plotprop(curs):
+    P.clf()
+    ax1=P.subplot(121)
+    plot_z_fuv_prop(curs)
+    ax2=P.subplot(122,sharey=ax1)
+    plot_LyHa_prop(curs)
+
 def plotall(curs):
     P.clf()
     P.subplot(231)
@@ -204,6 +228,52 @@ def plotall(curs):
     plot_Ha_beta(curs)
     P.subplot(236)
     plot_lum_beta(curs)
+
+def detcolor(curs,sid):
+    curs.execute('select sid from green where sid="%d"'%sid)
+    if curs.fetchone(): return 'g'
+    curs.execute('select sid from mccand where sid="%d"'%sid)
+    if curs.fetchone(): return 'r'
+    curs.execute('select sid from heck where sid="%d"'%sid)
+    if curs.fetchone(): return 'b'
+
+    return 'y'
+    
+
+def plotselimages(curs):
+    import Image
+    P.clf()
+    P.subplots_adjust(0.01,0.01,0.99,0.99,0.02,0.02)
+    curs.execute('SELECT DISTINCT sid,z,Ha_w from sdss WHERE (sid IN (SELECT sid FROM sel)) ORDER BY z')
+    data=curs.fetchall()
+    i=1
+    for sid,z,ha in data:
+        ax=P.subplot(3,5,i,frameon=False)
+        ax.set_axis_off()
+        P.imshow(Image.open('%s.jpg'%str(sid)),origin='lower')
+        color=detcolor(curs,sid)
+        P.text(6,3,'$\mathbf{%d}$'%i,fontsize=18,color=color)
+        P.text(180,233,'$z:\\, %.3f$'%z,fontsize=11,color='w')
+        P.text(5,226,'$W(H_\\alpha):\\, %d \\AA$'%ha,fontsize=11,color='w')
+        curs.execute('SELECT fuv_lum from galex WHERE sid=%s'%str(sid))
+        fuv=N.max(curs.fetchall())
+        P.text(5,200,'$\log(L_{FUV}):\\, %.2f $'%N.log10(fuv),fontsize=11,color='w')
+        i+=1
+    print i
+
+def getselimages(curs):
+    url='http://casjobs.sdss.org/ImgCutoutDR7/getjpeg.aspx?ra=%s&dec=%s&scale=0.19806&width=256&height=256'
+
+    from urllib import urlopen as get
+    curs.execute('SELECT sid,ra,dec from sdss WHERE sid IN (SELECT sid FROM sel)')
+    data=curs.fetchall()
+    for sid,ra,dec in data:
+        im=get(url%(ra,dec))
+        f=open('%s.jpg'%str(sid),'w')
+        f.write(im.read())
+        f.close()
+        im.close()
+    
 
 #
 # FILLING CERTAIN DATABASE-TABLES
@@ -225,7 +295,6 @@ def fill_fuv_int(curs):
     query=curs.execute("SELECT g.sid,g.gid,g.fuv_lum,s.z,s.petroR50_u FROM sdss s, galex g WHERE g.sid=s.sid")
     for sid,gid,fuv_lum,z,r in query.fetchall():
         fuv_int=fuv_lum/ (N.pi * (r**2))
-        #print fuv_lum,fuv_int
         curs.execute("UPDATE galex SET fuv_int=%f WHERE gid=%d"%(fuv_int,gid))
         if fuv_int>10**9:
             curs.execute("UPDATE galex SET compact=2 WHERE gid=%d"%gid)
@@ -243,8 +312,9 @@ def fill_Ha_lum(curs):
 def fill_beta(curs):
     query=curs.execute("SELECT gid,fuv,nuv FROM galex")
     c=N.log10(1530.0/2270.0)
+    d=(2270.0/1530.0)**2
     for id,fuv,nuv in query.fetchall():
-        beta=-1*N.log10(fuv/nuv) /c
+        beta=-1*N.log10(fuv/nuv*d) /c
         #print fuv,nuv,beta
         curs.execute("UPDATE galex SET beta=%f WHERE gid=%d"%(beta,id))
     
@@ -279,14 +349,14 @@ def fill_galex(curs,galex):
     
 def fill_sdss(curs,sdss):
     """
-    sdss columns: objID,specobjID,ra,dec,z,mag_u,mag_g,mag_r,mag_i,mag_z,petroRad_u,petroR50_u,extinction_u,isoA_u,isoB_u,Ha_w,Ha_h,Ha_s,Hb_h,OIII_h,NII_h
+    sdss columns: objID,specobjID,ra,dec,l,b,z,mag_u,mag_g,mag_r,mag_i,mag_z,petroRad_u,petroR50_u,extinction_u,isoA_u,isoB_u,Ha_w,Ha_h,Ha_s,Hb_h,OIII_h,NII_h
     """
     objID,specobjID=N.loadtxt(sdss,skiprows=1,unpack=True,dtype='S',delimiter=',',usecols=(0,1))
-    ra,dec,z,mag_u,mag_g,mag_r,mag_i,mag_z,petroRad_u,petroR50_u,extinction_u,isoA_u,isoB_u,Ha_w,Ha_h,Ha_s,Hb_h,OIII_h,NII_h=N.loadtxt(sdss,skiprows=1,unpack=True,dtype='Float64',delimiter=',',usecols=tuple(N.arange(19)+2))
-    curs.execute('CREATE TABLE IF NOT EXISTS sdss (sid INTEGER, specid INTEGER, ra REAL, dec REAL, z REAL, mag_u REAL, mag_g REAL, mag_r REAL, mag_i REAL, mag_z REAL, petroRad_u REAL, petroR50_u REAL, ext_u REAL, isoA_u REAL, isoB_u REAL, Ha_w REAL, Ha_h REAL, Ha_s REAL, Hb_h REAL, OIII_h REAL, NII_h REAL, agn INTEGER, Ha_lum REAL);')
+    ra,dec,l,b,z,mag_u,mag_g,mag_r,mag_i,mag_z,petroRad_u,petroR50_u,extinction_u,isoA_u,isoB_u,Ha_w,Ha_h,Ha_s,Hb_h,OIII_h,NII_h=N.loadtxt(sdss,skiprows=1,unpack=True,dtype='Float64',delimiter=',',usecols=tuple(N.arange(21)+2))
+    curs.execute('CREATE TABLE IF NOT EXISTS sdss (sid INTEGER, specid INTEGER, ra REAL, dec REAL, l REAL, b REAL, z REAL, mag_u REAL, mag_g REAL, mag_r REAL, mag_i REAL, mag_z REAL, petroRad_u REAL, petroR50_u REAL, ext_u REAL, isoA_u REAL, isoB_u REAL, Ha_w REAL, Ha_h REAL, Ha_s REAL, Hb_h REAL, OIII_h REAL, NII_h REAL, agn INTEGER, Ha_lum REAL);')
     for i,id in enumerate(objID):
-        d=(id,specobjID[i],ra[i],dec[i],z[i],mag_u[i],mag_g[i],mag_r[i],mag_i[i],mag_z[i],petroRad_u[i],petroR50_u[i],extinction_u[i],isoA_u[i],isoB_u[i],Ha_w[i],Ha_h[i],Ha_s[i],Hb_h[i],OIII_h[i],NII_h[i])
-        curs.execute('INSERT INTO sdss VALUES (%s,%s,%f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, NULL, NULL);'%d)
+        d=(id,specobjID[i],ra[i],dec[i],l[i],b[i],z[i],mag_u[i],mag_g[i],mag_r[i],mag_i[i],mag_z[i],petroRad_u[i],petroR50_u[i],extinction_u[i],isoA_u[i],isoB_u[i],Ha_w[i],Ha_h[i],Ha_s[i],Hb_h[i],OIII_h[i],NII_h[i])
+        curs.execute('INSERT INTO sdss VALUES (%s,%s,%f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, NULL, NULL);'%d)
 
 def makedb(dbname=DBNAME):
     conn,curs=setupdb(dbname)
@@ -300,11 +370,12 @@ def makedb(dbname=DBNAME):
     conn.commit()
 
     # get the "external" runs in..
-    for run in ['green','mccand','heck1','heck2','heck3']:
+    for run in ['green','mccand','heck1','heck2','heck3','sel']:
         curs.execute('CREATE TABLE %s (sid INTEGER);'%run)
         sid=N.loadtxt('%s_targets'%run,skiprows=1,unpack=True,dtype='S',usecols=(0,))
         for id in sid:
             curs.execute('INSERT INTO %s VALUES (%s)'%(run,id))
+    curs.execute('create view heck as select * from heck1 union select * from heck2 union select * from heck3')
     conn.commit()
                          
     # do the work
@@ -315,6 +386,31 @@ def makedb(dbname=DBNAME):
     fill_fuv_int(curs)
 
     conn.commit()
+
+def dump_selection(curs,outfile='selection.html',where=''):
+    urlbase='http://cas.sdss.org/dr7/en/tools/explore/obj.asp?id='
+    wanted='s.sid, s.z, g.fuv_lum, g.fuv_int, g.beta, s.agn, s.Ha_w, s.Ha_s, s.Ha_h,s.Hb_h,s.OIII_h,s.NII_h'
+    wanto=wanted.replace('s.','').replace('g.','')
+    wants=wanto.split(',')
+    f=open(outfile,'w')
+    f.write('<table border=1>\n')
+    for w in wants[:-4]: f.write('<td>%s</td>'%w)
+    f.write('<td>log(NII/Ha)</td><td>log(OIII/Hb)</td></tr>')
+    if where !='': where='AND %s'%where
+    curs.execute('SELECT DISTINCT %s FROM sdss s, galex g WHERE g.sid=s.sid %s ORDER BY s.z'%(wanted,where))
+    data=curs.fetchall()
+    for sid,z,fuv_lum,fuv_int,beta,agn,Ha_w,Ha_s,Ha_h,Hb_h,OIII_h,NII_h in data:
+        f.write('<tr>')
+        f.write('<td><a href="%s">%s</a></td>'%(urlbase+str(sid),str(sid)))
+        f.write('<td>%.3f</td><td>%.3f</td><td>%.3f</td>'%(z,N.log10(fuv_lum),N.log10(fuv_int)))
+        f.write('<td>%.2f</td><td>%s</td>'%(beta,str(agn)))
+        f.write('<td>%.1f</td><td>%.1f</td>'%(Ha_w,Ha_s))
+        x,y=P.log10(NII_h/Ha_h),P.log10(OIII_h/Hb_h)
+        f.write('<td>%.2f</td><td>%.2f</td>'%(x,y))
+            
+        f.write('</tr>')
+    f.close()
+
 
 def dump_foreign(curs,outfile='foreign.html'):
     urlbase='http://cas.sdss.org/dr7/en/tools/explore/obj.asp?id='
@@ -332,7 +428,7 @@ def dump_foreign(curs,outfile='foreign.html'):
         for sid,z,fuv_lum,fuv_int,beta,agn,Ha_w,Ha_s,Ha_h,Hb_h,OIII_h,NII_h in data:
             f.write('<tr>')
             f.write('<td><a href="%s">%s</a></td>'%(urlbase+str(sid),str(sid)))
-            f.write('<td>%.3f</td><td>%.2e</td><td>%.2e</td>'%(z,fuv_lum,fuv_int))
+            f.write('<td>%.3f</td><td>%.3f</td><td>%.3f</td>'%(z,N.log10(fuv_lum),N.log10(fuv_int)))
             f.write('<td>%.2f</td><td>%s</td>'%(beta,str(agn)))
             f.write('<td>%.1f</td><td>%.1f</td>'%(Ha_w,Ha_s))
             x,y=P.log10(NII_h/Ha_h),P.log10(OIII_h/Hb_h)
