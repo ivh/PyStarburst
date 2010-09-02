@@ -98,13 +98,13 @@ def plot_z_fuv(curs):
 
 def plot_z_fuv_prop(curs):
     z,fuv=xyZFUV(curs,'s.agn=0')
-    P.semilogy(z,fuv,'k,',alpha=0.1)
+    P.plot(z,N.log10(fuv),'k,',alpha=0.1)
     z,fuv=xyZFUV(curs,'s.sid IN (SELECT sid from sel)')
-    P.semilogy(z,fuv,'ob')
+    P.plot(z,N.log10(fuv),'ob')
     z,fuv=xyZFUV(curs,'s.sid IN (SELECT sid from sel) AND (s.sid IN (SELECT sid from heck3) OR s.sid IN (SELECT sid from heck2) OR s.sid IN (SELECT sid from heck1) OR s.sid IN (SELECT sid from green) OR s.sid IN (SELECT sid from mccand))')
-    P.semilogy(z,fuv,'or')
-    P.xlabel('z')
-    P.ylabel(r'L$_{FUV}$')
+    P.plot(z,N.log10(fuv),'or')
+    P.xlabel('$z$')
+    P.ylabel(r'$\log(L_{FUV})$')
     
 def xyHaLum(curs,where):
     return gettable(curs,'s.Ha_w,g.fuv_lum',table='sdss s, galex g',where='g.sid=s.sid AND g.fuv_corr NOT NULL AND s.z NOT NULL AND s.agn=0 AND %s'%where)
@@ -131,13 +131,13 @@ def plot_Ha_lum(curs):
 
 def plot_LyHa_prop(curs):
     Ha,fuv=xyHaLum(curs,'s.agn=0')
-    P.loglog(Ha,fuv,',k',alpha=0.1)
+    P.plot(N.log10(Ha),N.log10(fuv),',k',alpha=0.1)
     Ha,fuv=xyHaLum(curs,'s.sid IN (SELECT sid from sel)')
-    P.loglog(Ha,fuv,'bo')
+    P.plot(N.log10(Ha),N.log10(fuv),'bo')
     Ha,fuv=xyHaLum(curs,'s.sid IN (SELECT sid from sel) AND (s.sid IN (SELECT sid from heck3) OR s.sid IN (SELECT sid from heck2) OR s.sid IN (SELECT sid from heck1) OR s.sid IN (SELECT sid from green) OR s.sid IN (SELECT sid from mccand))')
-    P.loglog(Ha,fuv,'ro')
-    P.xlabel(r'W(H$_\alpha$)')
-    P.ylabel(r'L$_{FUV}$')
+    P.plot(N.log10(Ha),N.log10(fuv),'ro')
+    P.xlabel(r'$\log\,W(H_\alpha)$')
+#P.ylabel(r'$L_{FUV}$')
 
 
 def xyHaInt(curs,where):
@@ -208,12 +208,16 @@ def plot_lum_beta(curs):
     P.ylabel('beta')
 
 def plotprop(curs):
-    P.clf()
+    P.figure(figsize=(10,4))
+    P.subplots_adjust(0.09,0.15,0.97,0.95,0.0,0.0)
     ax1=P.subplot(121)
     plot_z_fuv_prop(curs)
     ax2=P.subplot(122,sharey=ax1)
     plot_LyHa_prop(curs)
-
+    P.setp(ax2.get_yticklabels(), visible=False)
+    ax1.axis([0.025,0.185,8.95,10.78])
+    ax2.axis([1.9,3.01,8.95,10.78])
+    
 def plotall(curs):
     P.clf()
     P.subplot(231)
@@ -231,35 +235,57 @@ def plotall(curs):
 
 def detcolor(curs,sid):
     curs.execute('select sid from green where sid="%d"'%sid)
-    if curs.fetchone(): return 'g'
+    if curs.fetchone(): return '#48db00'
     curs.execute('select sid from mccand where sid="%d"'%sid)
     if curs.fetchone(): return 'r'
     curs.execute('select sid from heck where sid="%d"'%sid)
-    if curs.fetchone(): return 'b'
+    if curs.fetchone(): return '#429fff'
 
     return 'y'
     
 
 def plotselimages(curs):
     import Image
-    P.clf()
+    P.rc('xtick.major', pad=-12)
+    P.rc('xtick', labelsize=8)
+    P.figure(figsize=(10,4.96))
     P.subplots_adjust(0.01,0.01,0.99,0.99,0.02,0.02)
+    
+    ax1=P.axes([0.38,0.01,0.30,0.32])
+    #plot_z_fuv_prop(curs)
+    ax2=P.axes([0.68,0.01,0.31,0.32],sharey=ax1)
+    #plot_LyHa_prop(curs)
+    P.setp(ax1.get_yticklabels(), visible=False)
+    P.setp(ax2.get_yticklabels(), fontsize=8)
+    ax1.set_yticks([9.5,10,10.5])
+    ax1.set_xticks([0.04,0.08,0.12,0.16])
+    ax2.set_xticks([2,2.4,2.8])
+    ax1.xaxis.labelpad=-19
+    ax2.xaxis.labelpad=-19
+    ax2.set_xlabel(r'$\log\,W(H_\alpha)$')
+    ax1.set_ylabel(r'$\log(L_{FUV})$')
+    ax1.set_xlabel(r'$z$')
+
     curs.execute('SELECT DISTINCT sid,z,Ha_w from sdss WHERE (sid IN (SELECT sid FROM sel)) ORDER BY z')
     data=curs.fetchall()
     i=1
     for sid,z,ha in data:
-        ax=P.subplot(3,5,i,frameon=False)
+        ax=P.subplot(3,6,i,frameon=False)
         ax.set_axis_off()
         P.imshow(Image.open('%s.jpg'%str(sid)),origin='lower')
         color=detcolor(curs,sid)
         P.text(6,3,'$\mathbf{%d}$'%i,fontsize=18,color=color)
-        P.text(180,233,'$z:\\, %.3f$'%z,fontsize=11,color='w')
-        P.text(5,226,'$W(H_\\alpha):\\, %d \\AA$'%ha,fontsize=11,color='w')
+        P.text(165,7,'$z:\\, %.3f$'%z,fontsize=11,color='w')
+        P.text(5,215,'$W(H_\\alpha):\\, %d \\AA$'%ha,fontsize=11,color='w')
         curs.execute('SELECT fuv_lum from galex WHERE sid=%s'%str(sid))
         fuv=N.max(curs.fetchall())
-        P.text(5,200,'$\log(L_{FUV}):\\, %.2f $'%N.log10(fuv),fontsize=11,color='w')
+        P.text(5,185,'$\log(L_{FUV}):\\, %.1f $'%N.log10(fuv),fontsize=11,color='w')
+        ax1.plot(z,N.log10(fuv),color=color,marker='o')
+        ax2.plot(N.log10(ha),N.log10(fuv),color=color,marker='o')
         i+=1
-    print i
+
+    ax1.axis([0.02,0.185,9.0,10.78])
+    ax2.axis([1.9,2.9,9.0,10.78])
 
 def getselimages(curs):
     url='http://casjobs.sdss.org/ImgCutoutDR7/getjpeg.aspx?ra=%s&dec=%s&scale=0.19806&width=256&height=256'
