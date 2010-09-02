@@ -189,7 +189,7 @@ def plot1(cursor):
     P.legend()
 
 def plot2(cursor):
-    extrawhere=''
+    extrawhere=' AND agn=0'
     plotbig,plotmid,plotsmall=True,True,True
     try: bigx,bigy=gettable(cursor,cols='NII_h/Ha_h,O5008_h/Hb_h',where='(Ha_s >700) AND (Hb_h >0) AND (O5008_h >0) AND (NII_h >0)'+extrawhere,table='sb')
     except: plotbig=False
@@ -203,7 +203,7 @@ def plot2(cursor):
     #x=N.arange(0.001,0.4,0.01)
     #P.plot(x,10**sdss.stasinska(N.log10(x)),'r-',label='stasinska')
     x=N.arange(0.001,0.7,0.01)
-    P.plot(x,10**sdss.lee(N.log10(x)),'r-',linewidth=2)
+    P.plot(x,10**sdss.mylee(N.log10(x)),'r-',linewidth=2)
     P.xlabel(r'$[N\, II]\, /\, H\alpha$')
     P.ylabel(r'$[O\, III]\, / H\beta$')
     #P.legend((s,m,b),(r'$\sigma(H\alpha)\, <\, 250\, km\,s^{-1}$',r'$250\, km\,s^{-1} <\, \sigma(H\alpha)\, <\, 700\, km\,s^{-1}$',r'$\sigma(H\alpha)\, >\, 700\, km\,s^{-1}$'),loc='lower left')
@@ -292,6 +292,17 @@ def plot9(curs):
     P.plot(g-r,u-g,'ob')
     P.xlabel('g-r')
     P.ylabel('u-g')
+
+def plot10(curs):
+    Ha_h,Hb_h,z = gettable(curs,cols='Ha_h,Hb_h,z',where='z<5',table='sb')
+
+    P.plot(z,Ha_h/Hb_h,'.b')
+    P.grid()
+    x=N.arange(0,0.4,0.001)
+    y=sdss.averbins(x,z,Ha_h/Hb_h)
+    P.plot(x,y,'or')
+    P.xlabel('z')
+    P.ylabel('Ha/Hb')
     
 
 def demo():

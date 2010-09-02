@@ -59,6 +59,28 @@ SpZprops=['plate','mjd','fiberID','name','wave','z','z_e','s','s_e','a','a_e','w
 
 
 # HELPER FUNCTIONS
+TYPES={'agn':'INTEGER',
+       'ObjID':'INTEGER PRIMARY KEY',
+       'SpecObjID':'INTEGER',
+       'flags ':'INTEGER',
+       'zwarning ':'INTEGER',
+       'plate ':'INTEGER',
+       'mjd ':'INTEGER',
+       'fiberid ':'INTEGER',
+       'fit_type_old':'INTEGER',
+       'fit_type_young':'INTEGER'
+       }
+def createcolumnifnotexists(curs,name):
+    try: curs.execute('SELECT %s from sdss LIMIT 1;'%name)
+    except Exception,e: 
+        #print e
+        if TYPES.has_key(name): ty=TYPES[name]
+        else: ty='REAL'
+        sql='ALTER TABLE sdss ADD COLUMN %s %s;'%(name,ty)
+        print sql
+        curs.execute(sql)
+
+
 def list2csv(list):
     return string.join(list,DELIM)
 
@@ -103,8 +125,8 @@ def delviews(cursor):
 
 def createviews(cursor):
     #cursor.execute('CREATE VIEW clean AS SELECT * from sdss WHERE zconf>0.95 AND ((flags & 8)==0)')
-    cursor.execute('CREATE VIEW clean AS SELECT * from sdss WHERE zconf>0.9')
-    cursor.execute('CREATE VIEW sb AS SELECT * from clean WHERE Ha_w > 120.0 AND Ha_s>1')
+    cursor.execute('CREATE VIEW clean AS SELECT * from sdss WHERE zconf>0.95')
+    cursor.execute('CREATE VIEW sb AS SELECT * from clean WHERE Ha_w > 60.0 AND Ha_s>1')
     cursor.execute('CREATE VIEW pb AS SELECT * from clean WHERE Hd_w < -6.0')
     printcomm()
     

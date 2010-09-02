@@ -79,18 +79,18 @@ def mylee(x):
     
 def decideAGN(curs):
     ids=gettable(curs,cols='objid',where='(Ha_h >0) AND (Hb_h>0) AND (O5008_h>0) AND (NII_h>0)',table='sdss')[0]
-    x,y,sig,M=gettable(curs,cols='NII_h/Ha_h,O5008_h/Hb_h,Ha_s,M',where='(Ha_h >0) AND (Hb_h>0) AND (O5008_h>0) AND (NII_h>0)',table='sdss')
-    x=N.log10(N.array(x))
-    y=N.log10(N.array(y))
-    limit=lee(x)
+    x,y,sig=gettable(curs,cols='NII_h/Ha_h,O5008_h/Hb_h,Ha_s',where='(Ha_h >0) AND (Hb_h>0) AND (O5008_h>0) AND (NII_h>0)',table='sdss')
+    x=N.log10(x.astype('float64'))
+    y=N.log10(y.astype('float64'))
+    limit=mylee(x)
+    createcolumnifnotexists(curs,'agn')
     for i,id in enumerate(ids):
         #print id,y[i],limit[i]
-        if (y[i]<limit[i]) and (sig[i] < 250):
-            pass
-            curs.execute("UPDATE sdss SET agn=0 WHERE objid=%s"%(id,))
-        else:
-            print x[i],y[i],limit[i],sig[i]
+        if (y[i]>limit[i]) or (sig[i] > 250) or (x[i]>0):
             curs.execute("UPDATE sdss SET agn=1 WHERE objid=%s"%(id,))
+        else:
+            #print x[i],y[i],limit[i],sig[i]
+            curs.execute("UPDATE sdss SET agn=0 WHERE objid=%s"%(id,))
         
 
 def fillExtCorrDB(curs):
@@ -101,6 +101,8 @@ def fillExtCorrDB(curs):
         print extcorr(ec,filt)
 
 def fillM(curs):
+    createcolumnifnotexists(curs,'Mr')
+    createcolumnifnotexists(curs,'Mg')
     ids=gettable(curs,cols='objid',where='z<100',table='sdss')[0]
     g,r,z=gettable(curs,cols='m_g,m_r,z',where='z<100',table='sdss')
     for i,id in enumerate(ids):
