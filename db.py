@@ -81,8 +81,8 @@ def createcolumnifnotexists(curs,name):
         curs.execute(sql)
 
 
-def list2csv(list):
-    return string.join(list,DELIM)
+def list2csv(list,delim=DELIM):
+    return string.join(list,delim)
 
 def printcomm():
     print 'Do not forget to commit the connection!'
@@ -112,11 +112,6 @@ def setupdb(dbname=DBNAME):
 
     return connection,cursor
 
-def deleteunwanted(cursor):
-    cursor.execute('DELETE FROM sdss WHERE (Ha_w < 120. AND Hd_w >-6.0)')
-    cursor.execute('VACUUM')
-    printcomm()
-
 def delviews(cursor):
     cursor.execute('DROP VIEW sb')
     cursor.execute('DROP VIEW pb')
@@ -124,8 +119,8 @@ def delviews(cursor):
     printcomm()
 
 def createviews(cursor):
-    #cursor.execute('CREATE VIEW clean AS SELECT * from sdss WHERE zconf>0.95 AND ((flags & 8)==0)')
-    cursor.execute('CREATE VIEW clean AS SELECT * from sdss WHERE zconf>0.95')
+    cursor.execute('CREATE VIEW clean AS SELECT * from sdss WHERE zconf>0.95 AND ((flags & 8)==0)')
+    #cursor.execute('CREATE VIEW clean AS SELECT * from sdss WHERE zconf>0.95')
     cursor.execute('CREATE VIEW sb AS SELECT * from clean WHERE Ha_w > 60.0 AND Ha_s>1')
     cursor.execute('CREATE VIEW pb AS SELECT * from clean WHERE Hd_w < -6.0')
     printcomm()

@@ -162,10 +162,10 @@ def plotHas(cursor):
     
 
 def plot1(cursor):
-    dage,dew,dmf,dM=gettable(cursor,cols='age,Ha_w,mf,M',where='agn=0 AND M>-20 AND age>5E5',table='sb')
-    gage,gew,gmf,gM=gettable(cursor,cols='age,Ha_w,mf,M',where='agn=0 AND M<-20 AND age>1E6',table='sb')
-    limit1x,limit1y=N.transpose(P.load('/home/tom/projekte/sdss/ages/mixred0'))[:2]
-    limit2x,limit2y=N.transpose(P.load('/home/tom/projekte/sdss/ages/mixblue0'))[:2]
+    dage,dew,dmf,dM=gettable(cursor,cols='age,Ha_w,mf,Mr',where='agn=0 AND Mr>-20 and mf NOTNULL',table='sb')
+    gage,gew,gmf,gM=gettable(cursor,cols='age,Ha_w,mf,Mr',where='agn=0 AND Mr<-20 and mf NOTNULL',table='sb')
+    limit1x,limit1y=N.transpose(P.loadtxt('/home/tom/projekte/sdss/ages/mixred0',unpack=True))[:2]
+    limit2x,limit2y=N.transpose(P.loadtxt('/home/tom/projekte/sdss/ages/mixblue0',unpack=True))[:2]
     #P.loglog(dage*2,dew,'g^',label='Age*2, M>-20',ms=5)
     #P.loglog(gage*2,gew,'b^',label='Age*2, M<-20',ms=5)
     
@@ -175,7 +175,7 @@ def plot1(cursor):
     P.scatter(dage*2,dew,c=dM,s=dmf*4000,label='Age*2, M>-20',alpha=0.2)
     P.xlabel(r'Burst age')
     P.ylabel(r'EW(H$\alpha$)')
-    P.axis([1E6,2E10,100,4E3])
+    #P.axis([1E6,2E10,100,4E3])
     P.legend()
     
     P.subplot(1,2,2)
@@ -185,7 +185,7 @@ def plot1(cursor):
     P.scatter(gage*2,gew,c=gM,s=gmf*4000,label='Age*2, M<-20',alpha=0.2)
     P.xlabel(r'Burst age')
     P.ylabel(r'EW(H$\alpha$)')
-    P.axis([1E6,2E10,100,4E3])
+    #P.axis([1E6,2E10,100,4E3])
     P.legend()
 
 def plot2(cursor):
@@ -209,10 +209,10 @@ def plot2(cursor):
     #P.legend((s,m,b),(r'$\sigma(H\alpha)\, <\, 250\, km\,s^{-1}$',r'$250\, km\,s^{-1} <\, \sigma(H\alpha)\, <\, 700\, km\,s^{-1}$',r'$\sigma(H\alpha)\, >\, 700\, km\,s^{-1}$'),loc='lower left')
 
 def plot3(curs):
-    sbM,sbD,fade=gettable(curs,cols='M,voldens,fade',where='voldens NOTNULL AND M NOTNULL AND agn=0 AND age>5E5 AND bpara2 <3',table='sb')
-    sbM2,sbD2,fade2=gettable(curs,cols='M,voldens,fade',where='voldens NOTNULL AND M NOTNULL AND agn=0 AND age>5E5 AND bpara2 >3',table='sb')
-    pbM,pbD=gettable(curs,cols='M,voldens',where='voldens NOTNULL AND M NOTNULL',table='pb')
-    abM,abD=gettable(curs,cols='M,voldens',where='voldens NOTNULL AND M NOTNULL AND agn=1 AND age>5E5',table='sb')
+    sbM,sbD,fade=gettable(curs,cols='Mr,voldens,fade',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND bpara <3',table='sb')
+    sbM2,sbD2,fade2=gettable(curs,cols='Mr,voldens,fade',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND bpara >3',table='sb')
+    pbM,pbD=gettable(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL',table='pb')
+    abM,abD=gettable(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL AND agn=1 ',table='sb')
     sfM=N.array(sbM)+N.array(fade)
     X=N.arange(-24,-14,1.0,dtype='f')
     pby=sdss.lumfu(X,pbM,pbD)
@@ -229,16 +229,17 @@ def plot3(curs):
     P.legend(loc='lower right')
 
 def plot4(curs):
-    M,mgas,mstar,mtot=gettable(curs,cols='M,mgas,mass,mtot',where='mtot NOTNULL AND age > 5E5',table='sb')
+    M,mgas,mstar,mtot=gettable(curs,cols='Mr,mgas,mass,mtot',where='mtot NOTNULL ',table='sb')
     P.semilogy(M,mstar,'ro',label='mass in stars')
-    P.semilogy(M,mtot*1E5,'go',label='total mass * 1E5')
-    P.semilogy(M,mgas/1E5,'bo',label='mass in gas / 1E5')
+    P.semilogy(M,mtot,'go',label='total mass')
+    P.semilogy(M,mgas,'bo',label='mass in gas')
     P.legend()
+    P.xlabel('Mr')
 
 def plot5(curs):
     mtot,bpara,bpara2,age=gettable(curs,cols='mtot,bpara,bpara2,age',where='mtot NOTNULL AND age > 5E5 AND agn=0 AND bpara2 NOTNULL',table='sb')
     mtot=N.log10(mtot)
-    X=N.arange(8,11,0.2,dtype='f')
+    X=N.arange(8,12,0.2,dtype='f')
     mean=sdss.averbins(X,mtot,bpara2)
     P.scatter(mtot,bpara2,s=age/1E8,label='b-parameter')
     P.plot(X[1:-1],mean[1:-1],'r-o')
@@ -247,8 +248,8 @@ def plot5(curs):
     P.legend(('vertical mean','symbol size: age'))
     
 def plot6(curs):
-    sbM,sbD,fade,age=gettable(curs,cols='M,voldens,fade,age',where='voldens NOTNULL AND M NOTNULL AND agn=0 AND age>5E5 AND mf>0.01 AND age NOTNULL',table='sb')
-    pbM,pbD=gettable(curs,cols='M,voldens',where='voldens NOTNULL AND M NOTNULL',table='pb')
+    sbM,sbD,fade,age=gettable(curs,cols='Mr,voldens,fade,age',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND age>5E5 AND mf>0.01 AND age NOTNULL',table='sb')
+    pbM,pbD=gettable(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL',table='pb')
     sfM=N.array(sbM)+N.array(fade)
     fact=8E8/age
     print fact
@@ -267,38 +268,38 @@ def plot6(curs):
     P.legend(loc='lower right')
 
 def plot7(curs):
-    M,mgas,mstar,mtot,sfr=gettable(curs,cols='M,mgas,mass,mtot,sfr',where='mtot NOTNULL AND age>5E5 AND sfr NOTNULL',table='sb')
+    M,mgas,mstar,mtot,sfr=gettable(curs,cols='Mr,mgas,mass,mtot,sfr',where='mtot NOTNULL AND sfr NOTNULL',table='sb')
     P.loglog(mtot,mgas/sfr,'r,',label='mass in stars')
     P.xlabel(r'$M_{total}$')
     P.ylabel(r'$M_{gas} / SFR$')
     P.title('Gas consumption')
 
 def plot8(curs):
-    M1,mtot1,age1=gettable(curs,cols='M,mtot,age',where='mtot NOTNULL AND age>5E5 AND bpara2<3 AND mf <0.025 AND M NOTNULL',table='sb')
-    M2,mtot2,age2=gettable(curs,cols='M,mtot,age',where='mtot NOTNULL AND age>5E5 AND bpara2<3 AND mf >0.025',table='sb')
-    M3,mtot3,age3=gettable(curs,cols='M,mtot,age',where='mtot NOTNULL AND age>5E5 AND bpara2>3 AND mf <0.025',table='sb')
-    M4,mtot4,age4=gettable(curs,cols='M,mtot,age',where='mtot NOTNULL AND age>5E5 AND bpara2>3 AND mf >0.025',table='sb')
+    M1,mtot1,age1=gettable(curs,cols='Mr,mtot,age',where='mtot NOTNULL AND bpara<3 AND mf <0.025 AND Mr NOTNULL',table='sb')
+    M2,mtot2,age2=gettable(curs,cols='Mr,mtot,age',where='mtot NOTNULL AND bpara<3 AND mf >0.025',table='sb')
+    M3,mtot3,age3=gettable(curs,cols='Mr,mtot,age',where='mtot NOTNULL AND bpara>3 AND mf <0.025',table='sb')
+    M4,mtot4,age4=gettable(curs,cols='Mr,mtot,age',where='mtot NOTNULL AND bpara>3 AND mf >0.025',table='sb')
     P.semilogy(M1,age1,'r.',label='b<3, mf <2.5%')
     P.semilogy(M2,age2,'k.',label='b<3, mf >2.5%')
     P.semilogy(M3,age3,'g.',label='b>3, mf <2.5%')
     P.semilogy(M4,age4,'b.',label='b>3, mf >2.5%')
-    P.xlabel(r'$M_{i}$')
+    P.xlabel(r'$M_{r}$')
     P.ylabel(r'Age [yr]')
     P.legend(loc='lower right')
 
 def plot9(curs):
-    u,g,r = gettable(curs,cols='m_u,m_g,m_r',where='z<5',table='pb')
+    u,g,r = gettable(curs,cols='m_u,m_g,m_r',where='z<5',table='sb')
 
     P.plot(g-r,u-g,'ob')
     P.xlabel('g-r')
     P.ylabel('u-g')
 
 def plot10(curs):
-    Ha_h,Hb_h,z = gettable(curs,cols='Ha_h,Hb_h,z',where='z<5',table='sb')
+    Ha_h,Hb_h,z = gettable(curs,cols='Ha_h,Hb_h,z',where='Mr < -18 and Mr > -20',table='sb')
 
     P.plot(z,Ha_h/Hb_h,'.b')
     P.grid()
-    x=N.arange(0,0.4,0.001)
+    x=N.arange(0,0.4,0.005)
     y=sdss.averbins(x,z,Ha_h/Hb_h)
     P.plot(x,y,'or')
     P.xlabel('z')

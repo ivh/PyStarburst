@@ -100,19 +100,24 @@ def fillExtCorrDB(curs):
         
         print extcorr(ec,filt)
 
+
 def fillM(curs):
     createcolumnifnotexists(curs,'Mr')
     createcolumnifnotexists(curs,'Mg')
-    ids=gettable(curs,cols='objid',where='z<100',table='sdss')[0]
-    g,r,z=gettable(curs,cols='m_g,m_r,z',where='z<100',table='sdss')
+    ids=gettable(curs,cols='objid',where='m_g NOTNULL AND z NOTNULL',table='sdss')[0]
+    m,z=gettable(curs,cols='m_g-ext_g,z',where='m_g NOTNULL AND z NOTNULL',table='sdss')
     for i,id in enumerate(ids):
-        print id
-        curs.execute("UPDATE sdss SET Mg=%f,Mr=%f WHERE objid=%s"%(absmag(g[i],z[i]),absmag(r[i],z[i]),id))
+        curs.execute("UPDATE sdss SET Mg=%f WHERE objid=%s"%(absmag(m[i],z[i]),id))
+    ids=gettable(curs,cols='objid',where='m_r NOTNULL AND z NOTNULL',table='sdss')[0]
+    m,z=gettable(curs,cols='m_r-ext_r,z',where='m_r NOTNULL AND z NOTNULL',table='sdss')
+    for i,id in enumerate(ids):
+        curs.execute("UPDATE sdss SET Mr=%f WHERE objid=%s"%(absmag(m[i],z[i]),id))
 
 def massG(m,ml):
     return ml*10**(-0.4*(m-5.48))
 
 def fillMass(curs):
+    createcolumnifnotexists(curs,'mass')
     ids=gettable(curs,cols='objid',where='ml NOTNULL',table='sdss')[0]
     g,ext,ml,z=gettable(curs,cols='m_g,ext_g,ml,z',where='ml NOTNULL',table='sdss')
     ge=N.array(g)-N.array(ext)
@@ -131,10 +136,11 @@ def voldens(Mr):
     return 1/v
     
 def fillVoldens(curs):
-    ids=gettable(curs,cols='objid',where='z<5',table='sdss')[0]
-    r,z=gettable(curs,cols='m_r,z',where='z<5',table='sdss')
+    createcolumnifnotexists(curs,'voldens')
+    ids=gettable(curs,cols='objid',where='m_r NOTNULL AND z NOTNULL',table='sdss')
+    r,z=gettable(curs,cols='m_r,z',where='m_r NOTNULL AND z NOTNULL',table='sdss')
     for i,id in enumerate(ids):
-        print id, '%e'%voldens(absmag(r[i],z[i]))
+        #print id, '%e'%voldens(absmag(r[i],z[i]))
         curs.execute("UPDATE sdss SET voldens=%e WHERE objid=%s"%(voldens(absmag(r[i],z[i])),id))
 
 def fadingR(age):
@@ -143,6 +149,7 @@ def fadingR(age):
     else: return 0.0
 
 def fillFading(curs):
+    createcolumnifnotexists(curs,'fade')
     ids=gettable(curs,cols='objid',where='age NOTNULL',table='sdss')[0]
     age,z=gettable(curs,cols='age,z',where='age NOTNULL',table='sdss')
     for i,id in enumerate(ids):
@@ -162,6 +169,7 @@ def sfr(Ha_h,Ha_s,z,ec):
     return Ha_h*1E-20 *Kms2Ang(Ha_s,z)*N.sqrt(2*P.pi) *4*P.pi*distanceInMeter(z)**2 / 1.51e34 * (10**(0.4*extcorr(ec,'r')))
 
 def fillSFR(curs):
+    createcolumnifnotexists(curs,'sfr')
     ids=gettable(curs,cols='objid',where='Ha_h >0 AND Ha_s>1 AND ec NOTNULL',table='sdss')[0]
     Ha_h,Ha_s,z,ec=gettable(curs,cols='Ha_h,Ha_s,z,ec',where='Ha_h >0 AND Ha_s>1 AND ec NOTNULL',table='sdss')
     for i,id in enumerate(ids):
@@ -172,13 +180,15 @@ def mgas(Mg):
     return 10**(-0.3536*Mg+2.6374) + 10**(-0.45*Mg+0.35)
 
 def fillMgas(curs):
-    ids=gettable(curs,cols='objid',where='m_g NOTNULL',table='sdss')[0]
-    m_g,z=gettable(curs,cols='m_g,z',where='m_g NOTNULL',table='sdss')
+    createcolumnifnotexists(curs,'mgas')
+    ids=gettable(curs,cols='objid',where='m_g NOTNULL AND z NOTNULL',table='sdss')[0]
+    m_g,z=gettable(curs,cols='m_g,z',where='m_g NOTNULL AND z NOTNULL',table='sdss')
     for i,id in enumerate(ids):
         #print id, '%e'%mgas(absmag(m_g[i],z[i]))
         curs.execute("UPDATE sdss SET mgas=%f WHERE objid=%s"%(mgas(absmag(m_g[i],z[i])),id))
 
 def fillMtot(curs):
+    createcolumnifnotexists(curs,'mtot')
     ids=gettable(curs,cols='objid',where='mgas NOTNULL AND mass NOTNULL',table='sdss')[0]
     mass,mgas=gettable(curs,cols='mass,mgas',where='mgas NOTNULL AND mass NOTNULL',table='sdss')
     for i,id in enumerate(ids):
@@ -186,6 +196,7 @@ def fillMtot(curs):
         curs.execute("UPDATE sdss SET mtot=%f WHERE objid=%s"%(mgas[i]+mass[i],id))
 
 def fillBpara2(curs):
+    createcolumnifnotexists(curs,'bpara2')
     ids=gettable(curs,cols='objid',where='mtot NOTNULL AND sfr NOTNULL',table='sdss')[0]
     mtot,sfr=gettable(curs,cols='mtot,sfr',where='mtot NOTNULL AND sfr NOTNULL',table='sdss')
 
