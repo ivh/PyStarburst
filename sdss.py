@@ -129,15 +129,16 @@ def z2volume(z):
     return (4*P.pi/3)*(z*c/72.)**3
 
 def voldens(Mr):
-    r=10**(0.2*(17.77-Mr-25))
+    r=10**(0.2*(17.77-Mr+5))
+    r/=1E6
     v=4.0 * P.pi * (r**3) / 3.0
-    v*=5.556 # SDSS DR6 covers 18% of the sky
+    v*=5.13 # SDSS DR7 spectra cover 19% of the sky
     v-=z2volume(0.005) # subtract the local volume
     return 1/v
     
 def fillVoldens(curs):
     createcolumnifnotexists(curs,'voldens')
-    ids=gettable(curs,cols='objid',where='m_r NOTNULL AND z NOTNULL',table='sdss')
+    ids=gettable(curs,cols='objid',where='m_r NOTNULL AND z NOTNULL',table='sdss')[0]
     r,z=gettable(curs,cols='m_r,z',where='m_r NOTNULL AND z NOTNULL',table='sdss')
     for i,id in enumerate(ids):
         #print id, '%e'%voldens(absmag(r[i],z[i]))
@@ -210,18 +211,19 @@ def lumfu(X,M,voldens):
         y[i]=N.sum(N.where(M<x,voldens,0.0))-y[i-1]
     return y
 
-def averbins(X,orgX,Y):
+def averbins(X,orgX,Y,median=False):
     mean=N.zeros_like(X)
-    median=mean.copy()
-    sigma=mean.copy()
+    #median=mean.copy()
+    #sigma=mean.copy()
     for i,x in enumerate(X[:-1]):
         tmp=masked_where(orgX<x,Y)
         tmp=masked_where(orgX>=X[i+1],tmp)
-        mean[i]=tmp.mean()
+        if median: mean[i]=N.ma.median(tmp)
+        else: mean[i]=tmp.mean()
         #median[i]=N.median(tmp)
         #sigma[i]=tmp.std()
     return mean
-        
+       
 def demo():
     print "This file defines some functions. It is not meant to be executed. Import it instead!"
 

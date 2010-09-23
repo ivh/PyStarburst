@@ -8,6 +8,7 @@ Help: none, you're on your own.
 
 import numpy as N
 import pylab as P
+from numpy.ma import masked_where
 
 from db import *
 import sdss
@@ -209,24 +210,26 @@ def plot2(cursor):
     #P.legend((s,m,b),(r'$\sigma(H\alpha)\, <\, 250\, km\,s^{-1}$',r'$250\, km\,s^{-1} <\, \sigma(H\alpha)\, <\, 700\, km\,s^{-1}$',r'$\sigma(H\alpha)\, >\, 700\, km\,s^{-1}$'),loc='lower left')
 
 def plot3(curs):
-    sbM,sbD,fade=gettable(curs,cols='Mr,voldens,fade',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND bpara <3',table='sb')
-    sbM2,sbD2,fade2=gettable(curs,cols='Mr,voldens,fade',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND bpara >3',table='sb')
-    pbM,pbD=gettable(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL',table='pb')
-    abM,abD=gettable(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL AND agn=1 ',table='sb')
+    sbM,sbD,fade=gettable(curs,cols='Mr,voldens,fade',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND bpara2 <3 and m_r< 17.77',table='sb')
+    sbM2,sbD2,fade2=gettable(curs,cols='Mr,voldens,fade',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND bpara2 >3 and m_r< 17.77',table='sb')
+    pbM,pbD=gettable(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL and m_r< 17.77',table='pb')
+    abM,abD=gettable(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL AND agn=1 and m_r< 17.77',table='sb')
     sfM=N.array(sbM)+N.array(fade)
     X=N.arange(-24,-14,1.0,dtype='f')
-    pby=sdss.lumfu(X,pbM,pbD)
-    sby=sdss.lumfu(X,sbM,sbD)
-    sby2=sdss.lumfu(X,sbM2,sbD2)
-    sfy=sdss.lumfu(X,sfM,sbD)
-    aby=sdss.lumfu(X,abM,abD)
-    P.semilogy(X,sby2,'b-o',label=r'starbursts, EW(H$\alpha$)>120, b>3')
-    P.semilogy(X,sby,'b--^',label=r'"starbursts", EW(H$\alpha$)>120, b<3')
-    P.semilogy(X,pby,'r-o',label=r'postbursts, EW(H$\delta$)<-6)')
+    fusk=1
+    pby=sdss.lumfu(X,pbM,pbD)*fusk
+    sby=sdss.lumfu(X,sbM,sbD)*fusk
+    sby2=sdss.lumfu(X,sbM2,sbD2)*fusk
+    sfy=sdss.lumfu(X,sfM,sbD)*fusk
+    aby=sdss.lumfu(X,abM,abD)*fusk
+    P.semilogy(X,sby,'b--^',label=r'"starbursts" b<3')
+    P.semilogy(X,sby2,'b-o',label=r'starbursts b>3')
+    P.semilogy(X,pby,'r-o',label=r'postbursts')
     P.semilogy(X[:5],aby[:5],'g-o',label='AGN')
     P.xlabel(r'$M_r$')
     P.ylabel(r'$\Phi$ [Mpc$^{-3}$]')
     P.legend(loc='lower right')
+    P.axis([-24.5,-13.5,0.9E-13*fusk,1.05E-4*fusk])
 
 def plot4(curs):
     M,mgas,mstar,mtot=gettable(curs,cols='Mr,mgas,mass,mtot',where='mtot NOTNULL ',table='sb')
@@ -237,48 +240,53 @@ def plot4(curs):
     P.xlabel('Mr')
 
 def plot5(curs):
-    mtot,bpara,bpara2,age=gettable(curs,cols='mtot,bpara,bpara2,age',where='mtot NOTNULL AND age > 5E5 AND agn=0 AND bpara2 NOTNULL',table='sb')
+    mtot,bpara,bpara2,age=gettable(curs,cols='mtot,bpara,bpara2,age',where='mtot NOTNULL AND Ha_w > 100 AND agn=0 AND bpara NOTNULL',table='sb')
+    b,label=bpara,'<b>'
     mtot=N.log10(mtot)
     X=N.arange(8,12,0.2,dtype='f')
-    mean=sdss.averbins(X,mtot,bpara2)
-    P.scatter(mtot,bpara2,s=age/1E8,label='b-parameter')
+    mean=sdss.averbins(X,mtot,b,median=True)
+    P.scatter(mtot,b,s=age/1E8)
     P.plot(X[1:-1],mean[1:-1],'r-o')
-    P.xlabel('total mass')
-    P.ylabel('b-parameter')
-    P.legend(('vertical mean','symbol size: age'))
+    P.xlabel('log(total mass)')
+    P.ylabel(label)
+    P.legend(('median','symbol size: age'))
+    P.title('W(Ha) > 100, no AGN ')
     
 def plot6(curs):
-    sbM,sbD,fade,age=gettable(curs,cols='Mr,voldens,fade,age',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND age>5E5 AND mf>0.01 AND age NOTNULL',table='sb')
+    sbM,sbD,fade,age=gettable(curs,cols='Mr,voldens,fade,age',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND age>5E5 AND mf>0.05 AND age NOTNULL',table='sb')
     pbM,pbD=gettable(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL',table='pb')
     sfM=N.array(sbM)+N.array(fade)
     fact=8E8/age
-    print fact
+    fusk=1
     sfD=sbD*fact
-    X=N.arange(-24,-14,1.0,dtype='f')
-    pby=sdss.lumfu(X,pbM,pbD)
-    sby=sdss.lumfu(X,sbM,sbD)
-    say=sdss.lumfu(X,sfM,sfD)
-    sfy=sdss.lumfu(X,sfM,sbD)
+    X=N.arange(-24,-14,0.99,dtype='f')
+    pby=sdss.lumfu(X,pbM,pbD)*fusk
+    sby=sdss.lumfu(X,sbM,sbD)*fusk
+    say=sdss.lumfu(X,sfM,sfD)*fusk
+    sfy=sdss.lumfu(X,sfM,sbD)*fusk
     P.semilogy(X,pby,'r-o',label=r'postbursts')
-    P.semilogy(X,sby,'b-o',label=r'starbursts, EW(H$\alpha$)>120, mf>1%')
+    P.semilogy(X,sby,'b-o',label=r'starbursts, mf>5%')
     P.semilogy(X,sfy,'gD-',label=r'faded starbursts')
     P.semilogy(X,say,'r--^',label=r'faded starburts, age corrected')
     P.xlabel(r'$M_r$')
     P.ylabel(r'$\Phi$ [Mpc$^{-3}$]')
     P.legend(loc='lower right')
+    P.axis([-24.5,-13.5,fusk*0.9E-13,fusk*1.05E-4])
 
 def plot7(curs):
-    M,mgas,mstar,mtot,sfr=gettable(curs,cols='Mr,mgas,mass,mtot,sfr',where='mtot NOTNULL AND sfr NOTNULL',table='sb')
+    M,mgas,mstar,mtot,sfr=gettable(curs,cols='Mr,mgas,mass,mtot,sfr',where='mtot NOTNULL AND sfr NOTNULL and Ha_w > 100',table='sb')
     P.loglog(mtot,mgas/sfr,'r,',label='mass in stars')
     P.xlabel(r'$M_{total}$')
     P.ylabel(r'$M_{gas} / SFR$')
     P.title('Gas consumption')
 
 def plot8(curs):
-    M1,mtot1,age1=gettable(curs,cols='Mr,mtot,age',where='mtot NOTNULL AND bpara<3 AND mf <0.025 AND Mr NOTNULL',table='sb')
-    M2,mtot2,age2=gettable(curs,cols='Mr,mtot,age',where='mtot NOTNULL AND bpara<3 AND mf >0.025',table='sb')
-    M3,mtot3,age3=gettable(curs,cols='Mr,mtot,age',where='mtot NOTNULL AND bpara>3 AND mf <0.025',table='sb')
-    M4,mtot4,age4=gettable(curs,cols='Mr,mtot,age',where='mtot NOTNULL AND bpara>3 AND mf >0.025',table='sb')
+    cols='Mr,mtot,age'
+    where='mtot NOTNULL AND Mr NOTNULL and Ha_w > 100'
+    M1,mtot1,age1=gettable(curs,cols=cols,where=where+' AND mf <0.025 AND bpara<3',table='sb')
+    M2,mtot2,age2=gettable(curs,cols=cols,where=where+' AND mf >0.025 AND bpara<3',table='sb')
+    M3,mtot3,age3=gettable(curs,cols=cols,where=where+' AND mf <0.025 AND bpara>3',table='sb')
+    M4,mtot4,age4=gettable(curs,cols=cols,where=where+' AND mf >0.025 AND bpara>3',table='sb')
     P.semilogy(M1,age1,'r.',label='b<3, mf <2.5%')
     P.semilogy(M2,age2,'k.',label='b<3, mf >2.5%')
     P.semilogy(M3,age3,'g.',label='b>3, mf <2.5%')
@@ -286,6 +294,36 @@ def plot8(curs):
     P.xlabel(r'$M_{r}$')
     P.ylabel(r'Age [yr]')
     P.legend(loc='lower right')
+
+def plot8a(curs):
+    cols='mtot,age'
+    where='mtot NOTNULL AND Mr NOTNULL'
+    mtot1,age1=gettable(curs,cols=cols,where=where+' AND bpara2<3',table='sb')
+    mtot2,age2=gettable(curs,cols=cols,where=where+' AND mf >0.025 AND bpara2<3',table='sb')
+    mtot3,age3=gettable(curs,cols=cols,where=where+' AND bpara>3',table='sb')
+    P.subplot(131)
+    P.ylabel(r'Age [yr]')
+    P.title('b > 3')
+    P.xlabel(r'total mass')
+    P.loglog(mtot1,age1,'b.',label='b<3')
+    axi=P.axis()
+
+    P.subplot(132)
+    P.title('b > 3, mf > 2.5%')
+    P.loglog(mtot2,age2,'b.',label='b<3, mf >2.5%')
+    ax=P.gca()
+    ax.set_yticklabels([])
+    P.axis(axi)
+
+    P.subplot(133)
+    P.title('<b> > 3')
+    P.loglog(mtot3,age3,'b.',label='<b> >3')
+    ax=P.gca()
+    ax.set_yticklabels([])
+    P.axis(axi)
+
+    
+
 
 def plot9(curs):
     u,g,r = gettable(curs,cols='m_u,m_g,m_r',where='z<5',table='sb')
@@ -304,6 +342,18 @@ def plot10(curs):
     P.plot(x,y,'or')
     P.xlabel('z')
     P.ylabel('Ha/Hb')
+    
+def plot11(curs):
+    age,mtot,mf,b=gettable(curs,cols='age,mtot,mf,bpara',where='bpara2 > 3',table='sb')
+    P.loglog(mtot,age,'.b',label='b>3')
+    mtot=masked_where(mf<0.025,mtot)
+    P.loglog(mtot,age,'.g',label='b>3, mf>2.5%')
+    mtot=masked_where(b<3,mtot)
+    P.loglog(mtot,age,'.r',label='b>3, mf>2.5%, <b> >3')
+    P.xlabel('total mass')
+    P.ylabel('age')
+    P.legend(loc='lower right')
+    return meanb
     
 
 def demo():
