@@ -4,7 +4,7 @@ FIRSTFILE='objids.csv'
 
 import sys
 from sdss import *
-from string import lower
+from string import lower,strip
 
 conn,curs=DB.setupdb()
 
@@ -19,7 +19,7 @@ else: SEP=','
 if SEP=='None':SEP=None
 
 head=f.readline()
-colist=head.split(SEP)
+colist=map(strip,head.split(SEP))
 
 if sys.argv[1]==FIRSTFILE:
     curs.execute('DROP TABLE IF EXISTS sdss;')
@@ -30,7 +30,7 @@ if sys.argv[1]==FIRSTFILE:
     sql="insert into sdss(%s) values (%s)"%(head,qmarks)
     print sql
     for line in f:
-        values=line[:-1].split(SEP)
+        values=map(strip,line.split(SEP))
         curs.execute(sql,values)
 
 

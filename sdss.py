@@ -132,7 +132,7 @@ def voldens(Mr):
     r=10**(0.2*(17.77-Mr+5))
     r/=1E6
     v=4.0 * P.pi * (r**3) / 3.0
-    v*=5.13 # SDSS DR7 spectra cover 19% of the sky
+    v/=5.13 # SDSS DR7 spectra cover 19% of the sky
     v-=z2volume(0.005) # subtract the local volume
     return 1/v
     

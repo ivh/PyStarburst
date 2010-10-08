@@ -62,18 +62,20 @@ SpZprops=['plate','mjd','fiberID','name','wave','z','z_e','s','s_e','a','a_e','w
 TYPES={'agn':'INTEGER',
        'ObjID':'INTEGER PRIMARY KEY',
        'SpecObjID':'INTEGER',
-       'flags ':'INTEGER',
+       'flags':'INTEGER',
        'zwarning ':'INTEGER',
-       'plate ':'INTEGER',
-       'mjd ':'INTEGER',
-       'fiberid ':'INTEGER',
+       'plate':'INTEGER',
+       'mjd':'INTEGER',
+       'fiberid':'INTEGER',
        'fit_type_old':'INTEGER',
-       'fit_type_young':'INTEGER'
+       'fit_type_young':'INTEGER',
+       'primtarget':'INTEGER'
        }
 def createcolumnifnotexists(curs,name):
     try: curs.execute('SELECT %s from sdss LIMIT 1;'%name)
     except Exception,e: 
         #print e
+        print name
         if TYPES.has_key(name): ty=TYPES[name]
         else: ty='REAL'
         sql='ALTER TABLE sdss ADD COLUMN %s %s;'%(name,ty)
