@@ -129,7 +129,7 @@ class inspect:
 
 class inspectage(inspect):
     def __init__(self,xcol='age',ycol='Ha_w',where='z<5',curs=None,table='sb',logx=False,logy=False,logxy=True,tolerance=0.001,linef='/home/tom/projekte/sdss/ages/mixred0'):
-        self.age,self.Ha_w=N.transpose(P.load(linef))[:2]
+        self.age,self.Ha_w=N.transpose(P.loadtxt(linef,unpack=True))[:2]
         inspect.__init__(self,xcol,ycol,where,curs,table,logx,logy,logxy,tolerance)
         
     def plot1(self):
@@ -274,8 +274,10 @@ def plot6(curs):
     P.axis([-24.5,-13.5,fusk*0.9E-13,fusk*1.05E-4])
 
 def plot7(curs):
-    M,mgas,mstar,mtot,sfr=gettable(curs,cols='Mr,mgas,mass,mtot,sfr',where='mtot NOTNULL AND sfr NOTNULL and Ha_w > 100',table='sb')
+    M,mgas,mstar,mtot,sfr,bpara2=gettable(curs,cols='Mr,mgas,mass,mtot,sfr,bpara2',where='mtot NOTNULL AND sfr NOTNULL and agn=0',table='sb')
     P.loglog(mtot,mgas/sfr,'r,',label='mass in stars')
+    mtot=masked_where(bpara2<3,mtot)
+    P.loglog(mtot,mgas/sfr,'b,',label='mass in stars')
     P.xlabel(r'$M_{total}$')
     P.ylabel(r'$M_{gas} / SFR$')
     P.title('Gas consumption')
@@ -297,27 +299,27 @@ def plot8(curs):
 
 def plot8a(curs):
     cols='mtot,age'
-    where='mtot NOTNULL AND Mr NOTNULL'
-    mtot1,age1=gettable(curs,cols=cols,where=where+' AND bpara2<3',table='sb')
-    mtot2,age2=gettable(curs,cols=cols,where=where+' AND mf >0.025 AND bpara2<3',table='sb')
-    mtot3,age3=gettable(curs,cols=cols,where=where+' AND bpara>3',table='sb')
+    where='mtot NOTNULL AND Mr NOTNULL and bpara > 2.5'
+    mtot1,age1=gettable(curs,cols=cols,where=where+' AND bpara2>3',table='sb')
+    mtot2,age2=gettable(curs,cols=cols,where=where+' AND mf >0.025 AND bpara2>3',table='sb')
+    mtot3,age3=gettable(curs,cols=cols,where=where+' AND mf >0.025',table='sb')
     P.subplot(131)
     P.ylabel(r'Age [yr]')
     P.title('b > 3')
     P.xlabel(r'total mass')
-    P.loglog(mtot1,age1,'b.',label='b<3')
+    P.loglog(mtot1,age1,'b.',label='b>3')
     axi=P.axis()
 
     P.subplot(132)
     P.title('b > 3, mf > 2.5%')
-    P.loglog(mtot2,age2,'b.',label='b<3, mf >2.5%')
+    P.loglog(mtot2,age2,'b.',label='b>3, mf >2.5%')
     ax=P.gca()
     ax.set_yticklabels([])
     P.axis(axi)
 
     P.subplot(133)
-    P.title('<b> > 3')
-    P.loglog(mtot3,age3,'b.',label='<b> >3')
+    P.title('mf >2.5%')
+    P.loglog(mtot3,age3,'b.',label='mf >2.5%')
     ax=P.gca()
     ax.set_yticklabels([])
     P.axis(axi)
@@ -353,7 +355,20 @@ def plot11(curs):
     P.xlabel('total mass')
     P.ylabel('age')
     P.legend(loc='lower right')
-    return meanb
+    return b
+    
+
+def plot12(curs):
+    age,mtot,mf,b=gettable(curs,cols='age,mtot,mf,bpara',where='bpara2 > 3',table='sb')
+    P.loglog(mtot,age,'.b',label='b>3')
+    mtot=masked_where(mf<0.025,mtot)
+    P.loglog(mtot,age,'.g',label='b>3, mf>2.5%')
+    mtot=masked_where(b<3,mtot)
+    P.loglog(mtot,age,'.r',label='b>3, mf>2.5%, <b> >3')
+    P.xlabel('total mass')
+    P.ylabel('age')
+    P.legend(loc='lower right')
+    return b
     
 
 def demo():
