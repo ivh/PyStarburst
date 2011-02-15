@@ -14,10 +14,10 @@ except:
     print USAGE
     exit()
 
-f.readline()
+#f.readline()
 
 for line in f:
-    specObjID,plate,mjd,fiberID,z,Ha_w,Ha_h,Ha_s,Hb_w,Hd_w=line[:-1].split(',')
+    specObjID,plate,mjd,fiberID=line.strip().split(',')
     fname='spSpec-%05d-%04d-%03d.fit'%(int(mjd),int(plate),int(fiberID))
 
     if path.exists(fname): print '%s already here'%fname; continue

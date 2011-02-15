@@ -66,7 +66,7 @@ TYPES={'agn':'INTEGER',
        'zwarning ':'INTEGER',
        'plate':'INTEGER',
        'mjd':'INTEGER',
-       'fiberid':'INTEGER',
+       'fiberID':'INTEGER',
        'fit_type_old':'INTEGER',
        'fit_type_young':'INTEGER',
        'primtarget':'INTEGER'
@@ -121,7 +121,7 @@ def delviews(cursor):
     printcomm()
 
 def createviews(cursor):
-    cursor.execute('CREATE VIEW clean AS SELECT * from sdss WHERE zconf>0.95 AND ((flags & 8)==0)')
+    cursor.execute('CREATE VIEW clean AS SELECT * from sdss WHERE zconf>0.95 AND ((flags & 8)==0) AND (primtarget & 64 > 0)')
     #cursor.execute('CREATE VIEW clean AS SELECT * from sdss WHERE zconf>0.95')
     cursor.execute('CREATE VIEW sb AS SELECT * from clean WHERE Ha_w > 60.0 AND Ha_s>1')
     cursor.execute('CREATE VIEW pb AS SELECT * from clean WHERE Hd_w < -6.0')

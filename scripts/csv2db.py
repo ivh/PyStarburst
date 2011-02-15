@@ -37,17 +37,17 @@ if sys.argv[1]==FIRSTFILE:
 else:
     if lower(colist[0])=='specobjid': matchby='specObjID'
     else: matchby='objID'
+    colist = colist[1:] # REMOVE objid or specobjid
     for col in colist: DB.createcolumnifnotexists(curs,col)
     setexp=('%s=?,'*len(colist))[:-1]
     setexp=setexp%tuple(colist)
     sql=" UPDATE sdss set %s WHERE %s=?"%(setexp,matchby)
     print sql
     for line in f:
-        values=line[:-1].split(SEP)
-        curs.execute(sql,values+[values[0]])
+        values=line.strip().split(SEP)
+        curs.execute(sql,values[1:]+[values[0]])
 
 
 
 conn.commit()
 conn.close()
-    
