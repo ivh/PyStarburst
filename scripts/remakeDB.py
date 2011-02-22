@@ -10,7 +10,9 @@ os.system('./csv2db.py spectradata2.csv')
 os.system('./csv2db.py spectradata3.csv')
 os.system('./csv2db.py photdata.csv')
 os.system('./csv2db.py primtarget.csv')
-os.system('./csv2db.py mix100901 None')
+os.system('./csv2db.py sbresult None')
+# old data
+#os.system('./csv2db.py mix100901 None')
 
 
 conn,curs=DB.setupdb()
