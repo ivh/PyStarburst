@@ -275,24 +275,26 @@ def plot6(curs):
 
 def plot7(curs):
     M,mgas,mstar,mtot,sfr,bpara2=gettable(curs,cols='Mr,mgas,mass,mtot,sfr,bpara2',where='mtot NOTNULL AND sfr NOTNULL and agn=0',table='sb')
-    P.loglog(mtot,mgas/sfr,'r,',label='mass in stars')
+    P.loglog(mtot,mgas/sfr,'r.',label='b<3')
     mtot=masked_where(bpara2<3,mtot)
-    P.loglog(mtot,mgas/sfr,'b,',label='mass in stars')
+    P.loglog(mtot,mgas/sfr,'b.',label='b>3')
     P.xlabel(r'$M_{total}$')
     P.ylabel(r'$M_{gas} / SFR$')
     P.title('Gas consumption')
+    P.legend(loc='upper left')
+
 
 def plot8(curs):
     cols='Mr,mtot,age'
-    where='mtot NOTNULL AND Mr NOTNULL and Ha_w > 100'
+    where='mtot NOTNULL AND Mr NOTNULL'
     M1,mtot1,age1=gettable(curs,cols=cols,where=where+' AND mf <0.025 AND bpara<3',table='sb')
     M2,mtot2,age2=gettable(curs,cols=cols,where=where+' AND mf >0.025 AND bpara<3',table='sb')
     M3,mtot3,age3=gettable(curs,cols=cols,where=where+' AND mf <0.025 AND bpara>3',table='sb')
     M4,mtot4,age4=gettable(curs,cols=cols,where=where+' AND mf >0.025 AND bpara>3',table='sb')
+    P.semilogy(M2,age2,'b.',label='b<3, mf >2.5%')
     P.semilogy(M1,age1,'r.',label='b<3, mf <2.5%')
-    P.semilogy(M2,age2,'k.',label='b<3, mf >2.5%')
-    P.semilogy(M3,age3,'g.',label='b>3, mf <2.5%')
-    P.semilogy(M4,age4,'b.',label='b>3, mf >2.5%')
+#    P.semilogy(M3,age3,'g.',label='b>3, mf <2.5%')
+#    P.semilogy(M4,age4,'b.',label='b>3, mf >2.5%')
     P.xlabel(r'$M_{r}$')
     P.ylabel(r'Age [yr]')
     P.legend(loc='lower right')
@@ -347,28 +349,29 @@ def plot10(curs):
     
 def plot11(curs):
     age,mtot,mf,b=gettable(curs,cols='age,mtot,mf,bpara',where='bpara2 > 3',table='sb')
-    P.loglog(mtot,age,'.b',label='b>3')
+    P.loglog(mtot,age,'Db',label='b>3')
     mtot=masked_where(mf<0.025,mtot)
-    P.loglog(mtot,age,'.g',label='b>3, mf>2.5%')
+    P.loglog(mtot,age,'Dg',label='b>3, mf>2.5%')
     mtot=masked_where(b<3,mtot)
-    P.loglog(mtot,age,'.r',label='b>3, mf>2.5%, <b> >3')
+    P.loglog(mtot,age,'Dr',label='b>3, mf>2.5%, <b> >3')
     P.xlabel('total mass')
     P.ylabel('age')
     P.legend(loc='lower right')
-    return b
     
 
 def plot12(curs):
-    age,mtot,mf,b=gettable(curs,cols='age,mtot,mf,bpara',where='bpara2 > 3',table='sb')
-    P.loglog(mtot,age,'.b',label='b>3')
-    mtot=masked_where(mf<0.025,mtot)
-    P.loglog(mtot,age,'.g',label='b>3, mf>2.5%')
-    mtot=masked_where(b<3,mtot)
-    P.loglog(mtot,age,'.r',label='b>3, mf>2.5%, <b> >3')
+    age,mtot,b=gettable(curs,cols='age,mtot,bpara',where='z>0',table='sb')
+    b1=masked_where(age>=5E7,b)
+    b2=masked_where(age<=5E7,b)
+    b2=masked_where(age>=5E8,b2)
+    b3=masked_where(age<=5E8,b)
+    P.semilogx(mtot,b3,',r',label='age > 5E8 yr')
+    P.semilogx(mtot,b2,'.b',label='5E7 < age < 5E8 yr')
+    P.semilogx(mtot,b1,'.k',label='age < 5E7 yr')
+    P.axis([5E8,1E12,-1,15])    
     P.xlabel('total mass')
-    P.ylabel('age')
-    P.legend(loc='lower right')
-    return b
+    P.ylabel('b')
+    P.legend(loc='upper right')
     
 
 def demo():
