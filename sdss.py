@@ -91,13 +91,12 @@ def decideAGN(curs):
         else:
             #print x[i],y[i],limit[i],sig[i]
             curs.execute("UPDATE sdss SET agn=0 WHERE objid=%s"%(id,))
-        
 
 def fillExtCorrDB(curs):
     filters=['u','g','r','i','z']
     ec=gettable(curs,'ec','ec NOTNULL')
     for filt in filters:
-        
+
         print extcorr(ec,filt)
 
 
@@ -135,7 +134,7 @@ def voldens(Mr):
     v/=5.13 # SDSS DR7 spectra cover 19% of the sky
     v-=z2volume(0.005) # subtract the local volume
     return 1/v
-    
+
 def fillVoldens(curs):
     createcolumnifnotexists(curs,'voldens')
     ids=gettable(curs,cols='objid',where='m_r NOTNULL AND z NOTNULL',table='sdss')[0]
@@ -165,7 +164,10 @@ def arcsec2meter(arcsec,z):
     D=distanceInMeter(z)
     a=N.radians(arcsec/3600.)
     return a*D
-    
+
+def arcsec2kpc(arcsec,z):
+    return arcsec2meter(arcsec,z) / 3.0856776e19
+
 def sfr(Ha_h,Ha_s,z,ec):
     return Ha_h*1E-20 *Kms2Ang(Ha_s,z)*N.sqrt(2*P.pi) *4*P.pi*distanceInMeter(z)**2 / 1.51e34 * (10**(0.4*extcorr(ec,'r')))
 
@@ -223,10 +225,29 @@ def averbins(X,orgX,Y,median=False):
         #median[i]=N.median(tmp)
         #sigma[i]=tmp.std()
     return mean
-       
+
+def dynMassDisk(r,sigma):
+    'r in kpc, sigma in km/s, returns solar masses'
+    return 7.9E5 * r * sigma**2
+
+def dynMassSphere(r,sigma):
+    'r in kpc, sigma in km/s, returns solar masses'
+    return 1.1E6 * r * sigma**2
+
+def fillDynMasses(curs):
+    createcolumnifnotexists(curs,'dynMassDisk')
+    createcolumnifnotexists(curs,'dynMassSphere')
+
+    ids,r50,r90,z,sig = gettable(curs,cols='objid,petroR50_r,petroR90_r,z,Ha_s',where='z NOTNULL AND Ha_s NOTNULL',table='sdss')
+    ids=ids.astype('l')
+    ms = dynMassSphere(arcsec2kpc(r50,z),sig)
+    md = dynMassDisk(arcsec2kpc(r90,z),sig)
+    for i,id in enumerate(ids):
+        curs.execute("UPDATE sdss SET dynMassDisk=%f, dynMassSphere=%f WHERE objid=%s"%(md[i],ms[i],id))
+
 def demo():
     print "This file defines some functions. It is not meant to be executed. Import it instead!"
 
 if __name__ == '__main__':
     demo()
-    
+
