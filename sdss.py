@@ -53,7 +53,7 @@ def fixSigmaInDB(curs,which='Ha_s',restlamb=lambHA):
     for id,sig,z in all:
         curs.execute("UPDATE sdss SET %s=%e WHERE (objID=%s)"%(which,Ang2KMS(sig,z,restlamb),id))
     print "Dont forget to commit!"
-    
+
 def extcorr(ec,filt):
     if filt == 'u': const=0.7156
     elif filt == 'g': const=0.5031
@@ -76,10 +76,9 @@ def lee(x):
 
 def mylee(x):
     return 0.71/(x-0.25)+1.25
-    
+
 def decideAGN(curs):
-    ids=gettable(curs,cols='objid',where='(Ha_h >0) AND (Hb_h>0) AND (O5008_h>0) AND (NII_h>0)',table='sdss')[0]
-    x,y,sig=gettable(curs,cols='NII_h/Ha_h,O5008_h/Hb_h,Ha_s',where='(Ha_h >0) AND (Hb_h>0) AND (O5008_h>0) AND (NII_h>0)',table='sdss')
+    ids,x,y,sig=gettable(curs,cols='objid,NII_h/Ha_h,O5008_h/Hb_h,Ha_s',where='(Ha_h >0) AND (Hb_h>0) AND (O5008_h>0) AND (NII_h>0)',table='sdss')
     x=N.log10(x.astype('float64'))
     y=N.log10(y.astype('float64'))
     limit=mylee(x)
@@ -103,12 +102,10 @@ def fillExtCorrDB(curs):
 def fillM(curs):
     createcolumnifnotexists(curs,'Mr')
     createcolumnifnotexists(curs,'Mg')
-    ids=gettable(curs,cols='objid',where='m_g NOTNULL AND z NOTNULL',table='sdss')[0]
-    m,z=gettable(curs,cols='m_g-ext_g,z',where='m_g NOTNULL AND z NOTNULL',table='sdss')
+    ids,m,z=gettable(curs,cols='objid,m_g-ext_g,z',where='m_g NOTNULL AND z NOTNULL',table='sdss')
     for i,id in enumerate(ids):
         curs.execute("UPDATE sdss SET Mg=%f WHERE objid=%s"%(absmag(m[i],z[i]),id))
-    ids=gettable(curs,cols='objid',where='m_r NOTNULL AND z NOTNULL',table='sdss')[0]
-    m,z=gettable(curs,cols='m_r-ext_r,z',where='m_r NOTNULL AND z NOTNULL',table='sdss')
+    ids,m,z=gettable(curs,cols='objid,m_r-ext_r,z',where='m_r NOTNULL AND z NOTNULL',table='sdss')
     for i,id in enumerate(ids):
         curs.execute("UPDATE sdss SET Mr=%f WHERE objid=%s"%(absmag(m[i],z[i]),id))
 
@@ -117,9 +114,8 @@ def massG(m,ml):
 
 def fillMass(curs):
     createcolumnifnotexists(curs,'mass')
-    ids=gettable(curs,cols='objid',where='ml NOTNULL',table='sdss')[0]
-    g,ext,ml,z=gettable(curs,cols='m_g,ext_g,ml,z',where='ml NOTNULL',table='sdss')
-    ge=N.array(g)-N.array(ext)
+    ids,g,ext,ml,z=gettable(curs,cols='objid,m_g,ext_g,ml,z',where='ml NOTNULL',table='sdss')
+    ge=g-ext
     for i,id in enumerate(ids):
         #print id, absmag(ge[i],z[i]), '%e'%massV(absmag(ge[i],z[i]),ml[i]), z[i]
         curs.execute("UPDATE sdss SET mass=%f WHERE objid=%s"%(massG(absmag(ge[i],z[i]),ml[i]),id))
@@ -137,10 +133,8 @@ def voldens(Mr):
 
 def fillVoldens(curs):
     createcolumnifnotexists(curs,'voldens')
-    ids=gettable(curs,cols='objid',where='m_r NOTNULL AND z NOTNULL',table='sdss')[0]
-    r,z=gettable(curs,cols='m_r,z',where='m_r NOTNULL AND z NOTNULL',table='sdss')
+    ids,r,z=gettable(curs,cols='objid,m_r,z',where='m_r NOTNULL AND z NOTNULL',table='sdss')
     for i,id in enumerate(ids):
-        #print id, '%e'%voldens(absmag(r[i],z[i]))
         curs.execute("UPDATE sdss SET voldens=%e WHERE objid=%s"%(voldens(absmag(r[i],z[i])),id))
 
 def fadingR(age):
@@ -150,10 +144,8 @@ def fadingR(age):
 
 def fillFading(curs):
     createcolumnifnotexists(curs,'fade')
-    ids=gettable(curs,cols='objid',where='age NOTNULL',table='sdss')[0]
-    age,z=gettable(curs,cols='age,z',where='age NOTNULL',table='sdss')
+    ids,age,z=gettable(curs,cols='objid,age,z',where='age NOTNULL',table='sdss')
     for i,id in enumerate(ids):
-        #print id, age[i],fadingR(age[i])
         curs.execute("UPDATE sdss SET fade=%f WHERE objid=%s"%(fadingR(age[i]),id))
 
 def distanceInMeter(z):
@@ -174,10 +166,8 @@ def sfr(Ha_h,Ha_s,z,ec):
 
 def fillSFR(curs):
     createcolumnifnotexists(curs,'sfr')
-    ids=gettable(curs,cols='objid',where='Ha_h >0 AND Ha_s>1 AND ec NOTNULL',table='sdss')[0]
-    Ha_h,Ha_s,z,ec=gettable(curs,cols='Ha_h,Ha_s,z,ec',where='Ha_h >0 AND Ha_s>1 AND ec NOTNULL',table='sdss')
+    ids,Ha_h,Ha_s,z,ec=gettable(curs,cols='objid,Ha_h,Ha_s,z,ec',where='Ha_h >0 AND Ha_s>1 AND ec NOTNULL',table='sdss')
     for i,id in enumerate(ids):
-        #print id, sfr(Ha_h[i],Ha_s[i],z[i],ec[i])
         curs.execute("UPDATE sdss SET sfr=%f WHERE objid=%s"%(sfr(Ha_h[i],Ha_s[i],z[i],ec[i]),id))
 
 def mgas(Mg):
@@ -185,27 +175,20 @@ def mgas(Mg):
 
 def fillMgas(curs):
     createcolumnifnotexists(curs,'mgas')
-    ids=gettable(curs,cols='objid',where='m_g NOTNULL AND z NOTNULL',table='sdss')[0]
-    m_g,z=gettable(curs,cols='m_g,z',where='m_g NOTNULL AND z NOTNULL',table='sdss')
+    ids,m_g,z=gettable(curs,cols='objid,m_g,z',where='m_g NOTNULL AND z NOTNULL',table='sdss')
     for i,id in enumerate(ids):
-        #print id, '%e'%mgas(absmag(m_g[i],z[i]))
         curs.execute("UPDATE sdss SET mgas=%f WHERE objid=%s"%(mgas(absmag(m_g[i],z[i])),id))
 
 def fillMtot(curs):
     createcolumnifnotexists(curs,'mtot')
-    ids=gettable(curs,cols='objid',where='mgas NOTNULL AND mass NOTNULL',table='sdss')[0]
-    mass,mgas=gettable(curs,cols='mass,mgas',where='mgas NOTNULL AND mass NOTNULL',table='sdss')
+    ids,mass,mgas=gettable(curs,cols='objid,mass,mgas',where='mgas NOTNULL AND mass NOTNULL',table='sdss')
     for i,id in enumerate(ids):
-        #print id, sfr(Ha_h[i],Ha_s[i],z[i],ec[i])
         curs.execute("UPDATE sdss SET mtot=%f WHERE objid=%s"%(mgas[i]+mass[i],id))
 
 def fillBpara2(curs):
     createcolumnifnotexists(curs,'bpara2')
-    ids=gettable(curs,cols='objid',where='mtot NOTNULL AND sfr NOTNULL',table='sdss')[0]
-    mtot,sfr=gettable(curs,cols='mtot,sfr',where='mtot NOTNULL AND sfr NOTNULL',table='sdss')
-
+    ids,mtot,sfr=gettable(curs,cols='objid,mtot,sfr',where='mtot NOTNULL AND sfr NOTNULL',table='sdss')
     for i,id in enumerate(ids):
-        #print id, sfr[i]/(mtot[i]/1E10)
         curs.execute("UPDATE sdss SET bpara2=%f WHERE objid=%s"%(sfr[i]/(mtot[i]/1E10),id))
 
 def lumfu(X,M,voldens):
@@ -238,13 +221,11 @@ def dynMassSphere(r,sigma):
 def fillDynMasses(curs):
     createcolumnifnotexists(curs,'dynMassDisk')
     createcolumnifnotexists(curs,'dynMassSphere')
-
     ids,r50,r90,z,sig = gettable(curs,cols='objid,petroR50_r,petroR90_r,z,Ha_s',where='z NOTNULL AND Ha_s NOTNULL',table='sdss')
-    ids=ids.astype('l')
     ms = dynMassSphere(arcsec2kpc(r50,z),sig)
     md = dynMassDisk(arcsec2kpc(r90,z),sig)
     for i,id in enumerate(ids):
-        curs.execute("UPDATE sdss SET dynMassDisk=%f, dynMassSphere=%f WHERE objid=%s"%(md[i],ms[i],id))
+        curs.execute("UPDATE sdss SET dynMassDisk=%s, dynMassSphere=%s WHERE objid=%s"%(md[i],ms[i],id))
 
 def demo():
     print "This file defines some functions. It is not meant to be executed. Import it instead!"

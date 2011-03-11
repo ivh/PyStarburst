@@ -33,8 +33,7 @@ S.fillSFR(curs)
 S.fillMgas(curs)
 S.fillMtot(curs)
 S.fillBpara2(curs)
-
+S.fillDynMasses(curs)
 
 conn.commit()
 conn.close()
-    

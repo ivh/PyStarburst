@@ -18,9 +18,9 @@ from PyGalKin.tool import smooth_gauss
 def plotspecwhere(cursor,where,table='sdss'):
     ids=cursor.execute('SELECT objID from %s WHERE %s'%(table,where))
     for id in ids:
-       plotspecbyid(id) 
+       plotspecbyid(id)
 
-       
+
 def plotspecbyid(id):
     fits=specfromid(id)
     head,spec,noise=sdss.splitfits(fits)
@@ -52,7 +52,7 @@ class inspect:
         self.tolerance=tolerance
         self.xtol=0.0
         self.ytol=0.0
-        
+
         self.fig1=P.figure(1)
         self.init1()
         self.fig2=P.figure(2)
@@ -60,8 +60,8 @@ class inspect:
 
         self.plot1()
         self.calctol()
-        
-        
+
+
     def init1(self):
         self.fig1.clf()
         self.ax1=self.fig1.add_subplot(1,1,1)
@@ -79,7 +79,7 @@ class inspect:
         self.ax2.set_xlabel(u'Ångström')
         self.fig1.canvas.draw()
 
-        
+
     def plot1(self):
         x,y=gettable(self.curs,self.xcol+','+self.ycol,self.where,self.table)
         if self.logx and self.logy: plotfu=self.ax1.loglog
@@ -93,7 +93,7 @@ class inspect:
         axis=N.array(self.ax1.axis())
         self.xtol=self.tolerance*(axis[1]-axis[0])
         self.ytol=self.tolerance*(axis[3]-axis[2])
-        
+
     def plotpicked(self,event):
         self.calctol()
         print self.xtol,self.ytol
@@ -116,22 +116,22 @@ class inspect:
             self.ax2.plot(wave,spec,linestyle='steps')
 
         self.fig2.canvas.draw()
-        
-            
+
+
     def keyhandler(self,event):
         if event.key=='s':
             print "Pick the point"
             self.clickconn=self.fig1.canvas.mpl_connect('pick_event',self.plotpicked)
         if event.key=='c': self.init2()
         if event.key=='q': self.fig1.canvas.mpl_disconnect(self.clickconn)
- 
+
 ## specific plots below here
 
 class inspectage(inspect):
     def __init__(self,xcol='age',ycol='Ha_w',where='z<5',curs=None,table='sb',logx=False,logy=False,logxy=True,tolerance=0.001,linef='/home/tom/projekte/sdss/ages/mixred0'):
         self.age,self.Ha_w=N.transpose(P.loadtxt(linef,unpack=True))[:2]
         inspect.__init__(self,xcol,ycol,where,curs,table,logx,logy,logxy,tolerance)
-        
+
     def plot1(self):
         xcol=self.xcol.split(',')
         x1,y1=gettable(self.curs,xcol[0]+','+self.ycol,self.where,self.table)
@@ -160,7 +160,7 @@ def plotHas(cursor):
     P.subplot(224)
     P.plot(Ha_s,Ha_cw/Ha_w,'.')
     P.title('Ha_cw/Ha_w vs. sigma')
-    
+
 
 def plot1(cursor):
     dage,dew,dmf,dM=gettable(cursor,cols='age,Ha_w,mf,Mr',where='agn=0 AND Mr>-20 and mf NOTNULL',table='sb')
@@ -169,7 +169,7 @@ def plot1(cursor):
     limit2x,limit2y=N.transpose(P.loadtxt('/home/tom/projekte/sdss/ages/mixblue0',unpack=True))[:2]
     #P.loglog(dage*2,dew,'g^',label='Age*2, M>-20',ms=5)
     #P.loglog(gage*2,gew,'b^',label='Age*2, M<-20',ms=5)
-    
+
     P.subplot(1,2,1)
     P.loglog(limit1x,limit1y,'--r',linewidth=2)
     P.loglog(limit2x,limit2y,'-r',linewidth=2)
@@ -178,7 +178,7 @@ def plot1(cursor):
     P.ylabel(r'EW(H$\alpha$)')
     #P.axis([1E6,2E10,100,4E3])
     P.legend()
-    
+
     P.subplot(1,2,2)
     P.loglog(limit1x,limit1y,'--r',linewidth=2)
     P.loglog(limit2x,limit2y,'-r',linewidth=2)
@@ -250,7 +250,7 @@ def plot5(curs):
     P.xlabel('log(total mass)')
     P.ylabel(label)
     P.legend(('median','symbol size: age'))
-    
+
 def plot6(curs):
     sbM,sbD,fade,age=gettable(curs,cols='Mr,voldens,fade,age',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND age>5E5 AND mf>0.05 AND age NOTNULL',table='sb')
     pbM,pbD=gettable(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL',table='pb')
@@ -381,23 +381,27 @@ def plot13(curs):
     P.axis([0,500,-1,10])
     P.legend(loc='upper right')
 
-def plot13(curs):
+def plot14(curs):
     dynMassDisk,dynMassSphere=gettable(curs,cols='dynMassDisk,dynMassSphere',where='agn=0',table='sb')
     P.loglog(dynMassDisk,dynMassSphere,'.b')
     dynMassDisk,dynMassSphere=gettable(curs,cols='dynMassDisk,dynMassSphere',where='agn=0',table='pb')
-    P.loglog(dynMassDisk,dynMassSphere/10,'.r')
-    P.grid() 
+    P.loglog(dynMassDisk,dynMassSphere,'.r')
+    P.grid()
     P.xlabel('M_dyn_disk')
     P.ylabel('M_dyn_sphere')
+
+def plot15(curs):
+    mtot,dynMassSphere=gettable(curs,cols='mtot,dynMassSphere',where='agn=0',table='sb')
+    P.loglog(mtot,dynMassSphere,'.b')
+    mtot,dynMassSphere=gettable(curs,cols='mtot,dynMassSphere',where='agn=0',table='pb')
+    P.loglog(mtot,dynMassSphere,'.r')
+    P.grid()
+    P.xlabel('M_phot')
+    P.ylabel('M_dyn')
+
 
 def demo():
     print "This file defines some functions. It is not meant to be executed. Import it instead!"
 
 if __name__ == '__main__':
     demo()
-    
-
-# TODO
-# LumFu -> fading -> *alderskvot (8E8)
-# gasmass/SFR vs log mass
-# age burst vs absmag och massa, uppdelat i b>3 mf >2.5%.

@@ -188,7 +188,7 @@ def specsfromquery(query,cursor=False,db=DBNAME):
     return speclist
 
 def fetch(cursor):
-    return N.transpose(map(list,cursor.fetchall()))
+    return map(N.array,zip(*cursor.fetchall()))
 
 def get(cursor,question):
     print question
