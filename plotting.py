@@ -240,7 +240,7 @@ def plot4(curs):
     P.xlabel('Mr')
 
 def plot5(curs):
-    mtot,bpara,bpara2,age=gettable(curs,cols='mtot,bpara,bpara2,age',where='mtot NOTNULL AND Ha_w > 100 AND agn=0 AND bpara NOTNULL',table='sb')
+    mtot,bpara,bpara2,age=gettable(curs,cols='mtot,bpara,bpara2,age',where='mtot NOTNULL AND agn=0 AND bpara NOTNULL',table='sb')
     b,label=bpara,'<b>'
     mtot=N.log10(mtot)
     X=N.arange(8,12,0.2,dtype='f')
@@ -250,7 +250,6 @@ def plot5(curs):
     P.xlabel('log(total mass)')
     P.ylabel(label)
     P.legend(('median','symbol size: age'))
-    P.title('W(Ha) > 100, no AGN ')
     
 def plot6(curs):
     sbM,sbD,fade,age=gettable(curs,cols='Mr,voldens,fade,age',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND age>5E5 AND mf>0.05 AND age NOTNULL',table='sb')
@@ -381,7 +380,15 @@ def plot13(curs):
     P.ylabel('b')
     P.axis([0,500,-1,10])
     P.legend(loc='upper right')
-    
+
+def plot13(curs):
+    dynMassDisk,dynMassSphere=gettable(curs,cols='dynMassDisk,dynMassSphere',where='agn=0',table='sb')
+    P.loglog(dynMassDisk,dynMassSphere,'.b')
+    dynMassDisk,dynMassSphere=gettable(curs,cols='dynMassDisk,dynMassSphere',where='agn=0',table='pb')
+    P.loglog(dynMassDisk,dynMassSphere/10,'.r')
+    P.grid() 
+    P.xlabel('M_dyn_disk')
+    P.ylabel('M_dyn_sphere')
 
 def demo():
     print "This file defines some functions. It is not meant to be executed. Import it instead!"
