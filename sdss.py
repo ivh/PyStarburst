@@ -167,6 +167,7 @@ def arcsec2meter(arcsec,z):
     return a*D
     
 def sfr(Ha_h,Ha_s,z,ec):
+    #            ||  extra -3 because of w/m^2 vs erg/s/cm^2
     return Ha_h*1E-20 *Kms2Ang(Ha_s,z)*N.sqrt(2*P.pi) *4*P.pi*distanceInMeter(z)**2 / 1.51e34 * (10**(0.4*extcorr(ec,'r')))
 
 def fillSFR(curs):

@@ -360,7 +360,7 @@ def plot11(curs):
     
 
 def plot12(curs):
-    age,mtot,b=gettable(curs,cols='age,mtot,bpara',where='z>0',table='sb')
+    age,mtot,b=gettable(curs,cols='age,mtot,bpara',where='agn=0',table='sb')
     b1=masked_where(age>=5E7,b)
     b2=masked_where(age<=5E7,b)
     b2=masked_where(age>=5E8,b2)
@@ -370,7 +370,16 @@ def plot12(curs):
     P.semilogx(mtot,b1,'.k',label='age < 5E7 yr')
     P.axis([5E8,1E12,-1,15])    
     P.xlabel('total mass')
+    P.ylabel('<b>')
+    P.legend(loc='upper right')
+
+def plot13(curs):
+    b,Ha_w,Ha_w_fit=gettable(curs,cols='bpara2,Ha_w,Ha_w_fit',where='Ha_w > 120',table='sb')
+    P.plot(Ha_w_fit,b,'r.',label='Ha_w_fit')
+    P.plot(Ha_w,b,'b.',label='Ha_w')
+    P.xlabel('W(Ha)')
     P.ylabel('b')
+    P.axis([0,500,-1,10])
     P.legend(loc='upper right')
     
 
