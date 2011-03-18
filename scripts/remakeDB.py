@@ -34,6 +34,7 @@ S.fillMgas(curs)
 S.fillMtot(curs)
 S.fillBpara2(curs)
 S.fillDynMasses(curs)
+S.fillBpara3(curs)
 
 conn.commit()
 conn.close()

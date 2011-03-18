@@ -391,14 +391,36 @@ def plot14(curs):
     P.ylabel('M_dyn_sphere')
 
 def plot15(curs):
-    mtot,dynMassSphere=gettable(curs,cols='mtot,dynMassSphere',where='agn=0',table='sb')
-    P.loglog(mtot,dynMassSphere,'.b')
-    mtot,dynMassSphere=gettable(curs,cols='mtot,dynMassSphere',where='agn=0',table='pb')
-    P.loglog(mtot,dynMassSphere,'.r')
+    mp,md1,md2=gettable(curs,cols='mtot,dynMassDisk,dynMassSphere',where='agn=0',table='sb')
+    md=(md1+md2)/2.0
+    P.loglog(mp,md,'.b')
+    mp,md1,md2=gettable(curs,cols='mtot,dynMassDisk,dynMassSphere',where='agn=0',table='pb')
+    md=(md1+md2)/2.0
+    P.loglog(mp,md,'.r')
     P.grid()
     P.xlabel('M_phot')
     P.ylabel('M_dyn')
 
+def plot16(curs):
+    b1,b2=gettable(curs,cols='bpara2,bpara3',where='agn=0',table='sb')
+    P.plot(b1,b2,'.b')
+    b1,b2=gettable(curs,cols='bpara2,bpara3',where='agn=0',table='pb')
+    P.plot(b1,b2,'.r')
+    P.grid()
+    P.xlabel('b_phot')
+    P.ylabel('b_dyn')
+    P.axis([-1,20,-1,20])
+
+def plot17(curs):
+    mp,md1,md2=gettable(curs,cols='mtot,dynMassDisk,dynMassSphere',where='agn=0 and mtot NOTNULL',table='sb')
+    md=(md1+md2)/2.0
+    P.semilogx(mp,md/mp,'.b')
+    mp,md1,md2=gettable(curs,cols='mtot,dynMassDisk,dynMassSphere',where='agn=0 and mtot NOTNULL',table='pb')
+    md=(md1+md2)/2.0
+    P.semilogx(mp,md/mp,'.r')
+    P.grid()
+    P.xlabel('M_phot')
+    P.ylabel('M_dyn/M_phot')
 
 def demo():
     print "This file defines some functions. It is not meant to be executed. Import it instead!"

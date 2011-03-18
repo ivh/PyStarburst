@@ -227,6 +227,13 @@ def fillDynMasses(curs):
     for i,id in enumerate(ids):
         curs.execute("UPDATE sdss SET dynMassDisk=%s, dynMassSphere=%s WHERE objid=%s"%(md[i],ms[i],id))
 
+def fillBpara3(curs):
+    createcolumnifnotexists(curs,'bpara3')
+    ids,m1,m2,sfr=gettable(curs,cols='objid,dynMassDisk,dynMassSphere,sfr',where='dynMassDisk NOTNULL AND sfr NOTNULL',table='sdss')
+    m=(m1+m2)/2.0
+    for i,id in enumerate(ids):
+        curs.execute("UPDATE sdss SET bpara3=%f WHERE objid=%s"%(sfr[i]/(m[i]/1E10),id))
+
 def demo():
     print "This file defines some functions. It is not meant to be executed. Import it instead!"
 
