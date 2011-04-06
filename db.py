@@ -195,15 +195,15 @@ def get(cursor,question):
     cursor.execute(question)
     return fetch(cursor)
 
-def gettable(cursor,cols,where='',table='sdss'):
-    if where!='': where=' WHERE '+where
+def gettable(cursor,cols,where=None,table='sdss'):
+    if where: where=' WHERE '+where
     return get(cursor,'SELECT %s FROM %s%s'%(cols,table,where))
 
-def getsb(cursor,cols,where=''):
-    return gettable(cursor,cols,where='',table='sb')
+def getsb(cursor,cols,where=None):
+    return gettable(cursor,cols,where=where,table='sb')
 
-def getpb(cursor,cols,where=''):
-    return gettable(cursor,cols,where='',table='pb')
+def getpb(cursor,cols,where=None):
+    return gettable(cursor,cols,where=where,table='pb')
 
 def getspZline(cursor,wantedlines=[11,12,15,24],wantedprops=N.arange(7,15)):
     for l in wantedlines:

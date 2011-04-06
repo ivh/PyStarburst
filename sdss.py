@@ -77,6 +77,22 @@ def lee(x):
 def mylee(x):
     return 0.71/(x-0.25)+1.25
 
+def schechterBlanton(m):
+    """
+    returns the luminosity function on unit magnitudes
+    as blanton etal http://iopscience.iop.org/1538-3881/121/5/2358/fulltext
+    fitted it to sdss data
+    """
+    phi0 = 1.46E-2 # +- 0.12E-2; units h^3 / Mpc^3
+    phi0 *= 0.7**3
+    M0 = -20.83 # +. 0.03
+    alpha = -1.20 # +- 0.03
+    phi = 0.4 * N.log(10) * phi0
+    phi *= 10**(-0.4*(m-M0)*(alpha+1))
+    phi *= N.exp(-10**(-0.4*(m-M0)))
+
+    return phi
+
 def decideAGN(curs):
     ids,x,y,sig=gettable(curs,cols='objid,NII_h/Ha_h,O5008_h/Hb_h,Ha_s',where='(Ha_h >0) AND (Hb_h>0) AND (O5008_h>0) AND (NII_h>0)',table='sdss')
     x=N.log10(x.astype('float64'))
