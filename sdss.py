@@ -210,7 +210,8 @@ def fillBpara2(curs):
 def lumfu(X,M,voldens):
     y=N.zeros_like(X)
     for i,x in enumerate(X):
-        y[i]=N.sum(N.where(M<x,voldens,0.0))-y[i-1]
+        y[i] = N.sum(N.where(M<x,voldens,0.0))
+    y[1:] -= y[:-1]
     return y
 
 def averbins(X,orgX,Y,median=False):

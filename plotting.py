@@ -13,7 +13,7 @@ from numpy.ma import masked_where
 from db import *
 import sdss
 from PyGalKin.tool import smooth_gauss
-
+from matplotlib.transforms import blended_transform_factory
 
 def plotspecwhere(cursor,where,table='sdss'):
     ids=cursor.execute('SELECT objID from %s WHERE %s'%(table,where))
@@ -205,16 +205,17 @@ def plot2(cursor):
     #P.legend((s,m,b),(r'$\sigma(H\alpha)\, <\, 250\, km\,s^{-1}$',r'$250\, km\,s^{-1} <\, \sigma(H\alpha)\, <\, 700\, km\,s^{-1}$',r'$\sigma(H\alpha)\, >\, 700\, km\,s^{-1}$'),loc='lower left')
 
 def plot3(curs):
-    X=N.arange(-24,-15.1,1/3.0,dtype='f')
+    X=N.arange(-24,-15.5,1/3.0,dtype='f')
     P.semilogy(X,sdss.schechterBlanton(X),'k-',label='total (Blanton et al. (2001))')
+    X=N.arange(-23,-15.5,1/3.0,dtype='f')
 
     M,D=getsb(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND Ha_w > 100')
     y=sdss.lumfu(X,M,D)
-    P.semilogy(X[2:],y[2:],'b-o',label=r'W($H\alpha$) > 100 $\AA$')
+    P.semilogy(X[2:],y[2:],'b-.s',label=r'W($H\alpha$) > 100 $\AA$')
 
     M,D=getsb(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND bpara2 >3')
     y=sdss.lumfu(X,M,D)
-    P.semilogy(X,y,'b--D',label=r'b > 3')
+    P.semilogy(X,y,'b--*',label=r'b > 3')
 
     M,D=getsb(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND mf > 0.025')
     y=sdss.lumfu(X,M,D)
@@ -222,16 +223,18 @@ def plot3(curs):
 
     M,D=getpb(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL')
     y=sdss.lumfu(X,M,D)
-    P.semilogy(X,y,'r-o',label=r'EW($H\delta$) < -6 $\AA$')
+    P.semilogy(X,y,'r-D',label=r'W($H\delta$) < -6 $\AA$')
 
     M,D=getsb(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL AND agn=1')
     y=sdss.lumfu(X,M,D)
+    y=masked_where(X>=-18,y)
     P.semilogy(X,y,'g-o',label='AGN')
 
     P.xlabel(r'$M_r$')
-    P.ylabel(r'$\Phi$ [Mpc$^{-3}$]')
-    P.legend(loc='lower right')
-    P.axis([-24.2,-14.5,4E-10,8E-3])
+    P.ylabel(r'$\Phi\quad [\mathrm{Mpc}^{-3}\, \mathrm{mag}^{-1}]$')
+    P.rcParams.update({'legend.fontsize':10})
+    P.legend(loc='upper left')
+    P.axis([-24.2,-15.5,4E-10,2E-2])
 
 def plot4(curs):
     M,mgas,mstar,mtot=gettable(curs,cols='Mr,mgas,mass,mtot',where='mtot NOTNULL ',table='sb')
@@ -425,17 +428,43 @@ def plot17(curs):
     P.ylabel('M_dyn/M_phot')
 
 def plot18(curs):
-    bins=1E6,1E7,1E8,1E9,1E10,1E11
+    bins=N.array([5.5,6.0,6.5,7.0,7.5,8.0,8.5,9.0,9.5,10.0])
     age1,Ha_w=getsb(curs,cols='age,Ha_w',where='agn=0 and Ha_w > 100 and age NOTNULL')
     age2,Ha_w=getsb(curs,cols='age,Ha_w',where='agn=0 and bpara2 > 3 and age NOTNULL')
     age3,Ha_w=getsb(curs,cols='age,Ha_w',where='agn=0 and mf > 0.025 and age NOTNULL')
     age1,age2,age3=map(N.log10,(age1,age2,age3))
-    P.hist(x=[age1,age2,age3],normed=True,bins=20,\
-        label=(r'W($H\alpha$) > 100 $\AA$',
-              r'b > 3',
-              r'mass fraction > 2.5 %'))
-    P.legend(loc='upper left')
-    P.xlabel(r'$log_{10}(\mathrm{burst\,  age})$')
+    ax=P.subplot(131)
+    P.hist(x=age1,normed=True,bins=bins,fc='gray')
+    P.title(r'$\mathrm{W(H\alpha)}\, >\, 100 \mathrm{\AA}$')
+    P.xlabel(r'$\mathrm{log}_{10}(\mathrm{burst\,  age})$')
+    P.xticks(N.arange(4)+6)
+    P.yticks([])
+    trans=blended_transform_factory(ax.transData, ax.transAxes)
+    P.plot([7.0],[0.8],'k<', transform=trans)
+    P.plot([8.0],[0.8],'ko', transform=trans)
+    P.plot([8.65],[0.8],'k>', transform=trans)
+
+    ax=P.subplot(132)
+    P.hist(x=age2,normed=True,bins=bins,fc='gray')
+    P.title(r'$\mathrm{b}\, >\, 3$')
+    P.xlabel(r'$\mathrm{log}_{10}(\mathrm{burst\,  age})$')
+    P.xticks(N.arange(4)+6)
+    P.yticks([])
+    trans=blended_transform_factory(ax.transData, ax.transAxes)
+    P.plot([7.0],[0.8],'k<', transform=trans)
+    P.plot([8.0],[0.8],'ko', transform=trans)
+    P.plot([8.65],[0.8],'k>', transform=trans)
+
+    ax=P.subplot(133)
+    P.hist(x=age3,normed=True,bins=bins,fc='gray')
+    P.title(r'$\mathrm{mass\, fraction}\, >\, 2.5 \%$')
+    P.xlabel(r'$\mathrm{log}_{10}(\mathrm{burst\,  age})$')
+    P.xticks(N.arange(4)+6)
+    P.yticks([])
+    trans=blended_transform_factory(ax.transData, ax.transAxes)
+    P.plot([7.0],[0.8],'k<', transform=trans)
+    P.plot([8.0],[0.8],'ko', transform=trans)
+    P.plot([8.65],[0.8],'k>', transform=trans)
 
 def demo():
     print "This file defines some functions. It is not meant to be executed. Import it instead!"
