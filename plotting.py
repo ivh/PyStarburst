@@ -146,22 +146,6 @@ class inspectage(inspect):
 
 
 
-def plotHas(cursor):
-    Ha_cw,Ha_w,Ha_pw,Ha_s=get(cursor,'SELECT  2.5066*Ha_s*Ha_h/Ha_cont AS Ha_cw,Ha_w,p_15_w as Ha_pw,Ha_s FROM sb WHERE zConf>0.95 AND Ha_w>0.1 AND Ha_w!=0.0 AND Ha_s BETWEEN 5 AND 15 ORDER BY Ha_w')
-    P.subplot(221)
-    P.plot(Ha_w,Ha_cw,'.')
-    P.title('Ha_w vs. Ha_cw')
-    P.subplot(222)
-    P.plot(Ha_w,Ha_cw/Ha_w,'.')
-    P.title('Ha_cw/Ha_w')
-    P.subplot(223)
-    P.plot(Ha_w,Ha_pw/Ha_w,'.')
-    P.title('Ha_pw/Ha_w')
-    P.subplot(224)
-    P.plot(Ha_s,Ha_cw/Ha_w,'.')
-    P.title('Ha_cw/Ha_w vs. sigma')
-
-
 def plot1(cursor):
     dage,dew,dmf,dM=gettable(cursor,cols='age,Ha_w,mf,Mr',where='agn=0 AND Mr>-20 and mf NOTNULL',table='sb')
     gage,gew,gmf,gM=gettable(cursor,cols='age,Ha_w,mf,Mr',where='agn=0 AND Mr<-20 and mf NOTNULL',table='sb')
@@ -211,19 +195,19 @@ def plot3(curs):
 
     M,D=getsb(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND Ha_w > 100')
     y=sdss.lumfu(X,M,D)
-    P.semilogy(X[2:],y[2:],'b-.s',label=r'W($H\alpha$) > 100 $\AA$')
+    P.semilogy(X[2:],y[2:],'b-.s',label=r'$\mathrm{W(H\alpha)} > 100 \mathrm{\AA}$')
 
     M,D=getsb(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND bpara2 >3')
     y=sdss.lumfu(X,M,D)
-    P.semilogy(X,y,'b--*',label=r'b > 3')
+    P.semilogy(X,y,'b--*',label=r'$\mathrm{b} > 3$')
 
     M,D=getsb(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND mf > 0.025')
     y=sdss.lumfu(X,M,D)
-    P.semilogy(X,y,'b^:',label=r'mass fraction > 2.5 %')
+    P.semilogy(X,y,'b^:',label=r'mass fraction $> 2.5 \%$')
 
     M,D=getpb(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL')
     y=sdss.lumfu(X,M,D)
-    P.semilogy(X,y,'r-D',label=r'W($H\delta$) < -6 $\AA$')
+    P.semilogy(X,y,'r-D',label=r'$\mathrm{W(H\delta)} < -6 \mathrm{\AA}$')
 
     M,D=getsb(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL AND agn=1')
     y=sdss.lumfu(X,M,D)
@@ -330,9 +314,6 @@ def plot8a(curs):
     ax.set_yticklabels([])
     P.axis(axi)
 
-    
-
-
 def plot9(curs):
     u,g,r = gettable(curs,cols='m_u,m_g,m_r',where='z<5',table='sb')
 
@@ -350,7 +331,7 @@ def plot10(curs):
     P.plot(x,y,'or')
     P.xlabel('z')
     P.ylabel('Ha/Hb')
-    
+
 def plot11(curs):
     age,mtot,mf,b=gettable(curs,cols='age,mtot,mf,bpara',where='bpara2 > 3',table='sb')
     P.loglog(mtot,age,'Db',label='b>3')
@@ -361,7 +342,6 @@ def plot11(curs):
     P.xlabel('total mass')
     P.ylabel('age')
     P.legend(loc='lower right')
-    
 
 def plot12(curs):
     age,mtot,b=gettable(curs,cols='age,mtot,bpara',where='agn=0',table='sb')
@@ -372,7 +352,7 @@ def plot12(curs):
     P.semilogx(mtot,b3,',r',label='age > 5E8 yr')
     P.semilogx(mtot,b2,'.b',label='5E7 < age < 5E8 yr')
     P.semilogx(mtot,b1,'.k',label='age < 5E7 yr')
-    P.axis([5E8,1E12,-1,15])    
+    P.axis([5E8,1E12,-1,15])
     P.xlabel('total mass')
     P.ylabel('<b>')
     P.legend(loc='upper right')
@@ -429,42 +409,24 @@ def plot17(curs):
 
 def plot18(curs):
     bins=N.array([5.5,6.0,6.5,7.0,7.5,8.0,8.5,9.0,9.5,10.0])
-    age1,Ha_w=getsb(curs,cols='age,Ha_w',where='agn=0 and Ha_w > 100 and age NOTNULL')
-    age2,Ha_w=getsb(curs,cols='age,Ha_w',where='agn=0 and bpara2 > 3 and age NOTNULL')
-    age3,Ha_w=getsb(curs,cols='age,Ha_w',where='agn=0 and mf > 0.025 and age NOTNULL')
-    age1,age2,age3=map(N.log10,(age1,age2,age3))
-    ax=P.subplot(131)
-    P.hist(x=age1,normed=True,bins=bins,fc='gray')
-    P.title(r'$\mathrm{W(H\alpha)}\, >\, 100 \mathrm{\AA}$')
-    P.xlabel(r'$\mathrm{log}_{10}(\mathrm{burst\,  age})$')
-    P.xticks(N.arange(4)+6)
-    P.yticks([])
-    trans=blended_transform_factory(ax.transData, ax.transAxes)
-    P.plot([7.0],[0.8],'k<', transform=trans)
-    P.plot([8.0],[0.8],'ko', transform=trans)
-    P.plot([8.65],[0.8],'k>', transform=trans)
-
-    ax=P.subplot(132)
-    P.hist(x=age2,normed=True,bins=bins,fc='gray')
-    P.title(r'$\mathrm{b}\, >\, 3$')
-    P.xlabel(r'$\mathrm{log}_{10}(\mathrm{burst\,  age})$')
-    P.xticks(N.arange(4)+6)
-    P.yticks([])
-    trans=blended_transform_factory(ax.transData, ax.transAxes)
-    P.plot([7.0],[0.8],'k<', transform=trans)
-    P.plot([8.0],[0.8],'ko', transform=trans)
-    P.plot([8.65],[0.8],'k>', transform=trans)
-
-    ax=P.subplot(133)
-    P.hist(x=age3,normed=True,bins=bins,fc='gray')
-    P.title(r'$\mathrm{mass\, fraction}\, >\, 2.5 \%$')
-    P.xlabel(r'$\mathrm{log}_{10}(\mathrm{burst\,  age})$')
-    P.xticks(N.arange(4)+6)
-    P.yticks([])
-    trans=blended_transform_factory(ax.transData, ax.transAxes)
-    P.plot([7.0],[0.8],'k<', transform=trans)
-    P.plot([8.0],[0.8],'ko', transform=trans)
-    P.plot([8.65],[0.8],'k>', transform=trans)
+    age1=getsb(curs,cols='age',where='agn=0 and Ha_w > 100 and age NOTNULL')
+    age2=getsb(curs,cols='age',where='agn=0 and bpara2 > 3 and age NOTNULL')
+    age3=getsb(curs,cols='age',where='agn=0 and mf > 0.025 and age NOTNULL')
+    ages=map(N.log10,(age1,age2,age3))
+    titles=[r'$\mathrm{W(H\alpha)}\, >\, 100 \mathrm{\AA}$',
+            r'$\mathrm{b}\, >\, 3$',
+            r'$\mathrm{mass\, fraction}\, >\, 2.5 \%$']
+    for i,age in enumerate(ages):
+        ax=P.subplot(131+i)
+        P.hist(x=age,normed=True,bins=bins,fc='gray')
+        P.title(titles[i])
+        P.xlabel(r'$\mathrm{log}_{10}(\mathrm{burst\,  age})$')
+        P.xticks(N.arange(4)+6)
+        P.yticks([])
+        trans=blended_transform_factory(ax.transData, ax.transAxes)
+        P.plot([7.0],[0.8],'k<', transform=trans)
+        P.plot([8.0],[0.8],'ko', transform=trans)
+        P.plot([8.65],[0.8],'k>', transform=trans)
 
 def demo():
     print "This file defines some functions. It is not meant to be executed. Import it instead!"

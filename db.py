@@ -147,21 +147,21 @@ def readfiles(fnames,cursor):
         poplist=N.array(poplist)-N.arange(len(poplist))
         for p in poplist:
             cols.pop(p)
-            
+
         for line in file:
             line=map(string.strip,line.split(DELIM))
             for p in poplist: line.pop(p)
             if newobject(cols,line,cursor): insert(cols,line,cursor)
             else: update(cols,line,cursor)
-        
+
         file.close()
 
 def getspecfilename((mjd,plate,fiberID)):
     return join(SPECBASE,'spSpec-%05d-%04d-%03d.fit'%(mjd,plate,fiberID))
-    
+
 def getspecZfilename((mjd,plate)):
     return join(SPECZBASE,'spZline-%04d-%05d.fits'%(plate,mjd))
-    
+
 
 def specfromid(id,cursor=False,db=DBNAME):
     if cursor==False:
@@ -188,7 +188,9 @@ def specsfromquery(query,cursor=False,db=DBNAME):
     return speclist
 
 def fetch(cursor):
-    return map(N.array,zip(*cursor.fetchall()))
+    result = map(N.array,zip(*cursor.fetchall()))
+    if len(result) == 1: result = result[0]
+    return result
 
 def get(cursor,question):
     print question
