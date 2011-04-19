@@ -428,12 +428,12 @@ def plot18(curs):
     bins=1E6,1E7,1E8,1E9,1E10,1E11
     age1,Ha_w=getsb(curs,cols='age,Ha_w',where='agn=0 and Ha_w > 100 and age NOTNULL')
     age2,Ha_w=getsb(curs,cols='age,Ha_w',where='agn=0 and bpara2 > 3 and age NOTNULL')
-    age3,Ha_w=getsb(curs,cols='age,Ha_w',where='agn=0 and mf > 0.025 and age NOTNULL')
+    age3,Ha_w=getsb(curs,cols='age,Ha_w',where='agn=0 and mf > 0.025 and age NOTNULL and Ha_w > 100')
     age1,age2,age3=map(N.log10,(age1,age2,age3))
     P.hist(x=[age1,age2,age3],normed=True,bins=20,\
         label=(r'W($H\alpha$) > 100 $\AA$',
               r'b > 3',
-              r'mass fraction > 2.5 %'))
+              r'mass fraction > 2.5 %, W($H\alpha$) > 100 $\AA$'))
     P.legend(loc='upper left')
     P.xlabel(r'$log_{10}(\mathrm{burst\,  age})$')
 
