@@ -153,6 +153,7 @@ def plot1(cursor):
     limit2x,limit2y=P.loadtxt('/home/tom/projekte/sdss/ages/mixblue0',unpack=True)[:2]
 
     P.subplot(1,2,1)
+    P.title(r'Dwarfs, $M_r > -20$')
     P.loglog(limit1x,limit1y,'--r',linewidth=2)
     P.loglog(limit2x,limit2y,'-r',linewidth=2)
     P.scatter(dage,dew,c=dM,s=dmf*2000,label='Age, M>-20',alpha=0.2)
@@ -161,27 +162,20 @@ def plot1(cursor):
     P.axis([1.8E6,2E10,55,2E3])
 
     P.subplot(1,2,2)
+    P.title(r'Giants, $M_r < -20$')
     P.loglog(limit1x,limit1y,'--r',linewidth=2)
     P.loglog(limit2x,limit2y,'-r',linewidth=2)
     P.scatter(gage,gew,c=gM,s=gmf*2000,label='Age, M<-20',alpha=0.2)
     P.xlabel(r'Burst age')
-    P.ylabel(r'EW(H$\alpha$)')
     P.axis([1.8E6,2E10,55,2E3])
+    P.setp(P.gca(),'yticklabels',[])
+    P.subplots_adjust(wspace=0)
 
 def plot2(cursor):
-    extrawhere=' AND agn=0'
-    plotbig,plotmid,plotsmall=True,True,True
-    try: bigx,bigy=gettable(cursor,cols='NII_h/Ha_h,O5008_h/Hb_h',where='(Ha_s >700) AND (Hb_h >0) AND (O5008_h >0) AND (NII_h >0)'+extrawhere,table='sb')
-    except: plotbig=False
-    try: smallx,smally=gettable(cursor,cols='NII_h/Ha_h,O5008_h/Hb_h',where='(Ha_s BETWEEN 1 AND 250 ) AND (Hb_h >0) AND (O5008_h >0) AND (NII_h >0)'+extrawhere,table='sb')
-    except: plotsmall=False
-    try: midx,midy=gettable(cursor,cols='NII_h/Ha_h,O5008_h/Hb_h',where='(Ha_s BETWEEN 250 AND 700) AND (Hb_h >0) AND (O5008_h >0) AND (NII_h >0)'+extrawhere,table='sb')
-    except: plotmid=False
-    if plotbig: b=P.loglog(bigx,bigy,'^k',ms=5)
-    if plotmid: m=P.loglog(midx,midy,'sg',ms=5)
-    if plotsmall: s=P.loglog(smallx,smally,'Db',ms=5)
-    #x=N.arange(0.001,0.4,0.01)
-    #P.plot(x,10**sdss.stasinska(N.log10(x)),'r-',label='stasinska')
+    ax,ay=gettable(cursor,cols='NII_h/Ha_h,O5008_h/Hb_h',where='agn=1',table='sb')
+    nx,ny=gettable(cursor,cols='NII_h/Ha_h,O5008_h/Hb_h',where='agn=0',table='sb')
+    P.loglog(ax,ay,',g',ms=5)
+    P.loglog(nx,ny,'Db',ms=5,alpha=0.5)
     x=N.arange(0.001,0.7,0.01)
     P.plot(x,10**sdss.mylee(N.log10(x)),'r-',linewidth=2)
     P.xlabel(r'$[N\, II]\, /\, H\alpha$')
@@ -221,73 +215,64 @@ def plot3(curs):
     P.axis([-24.2,-15.5,4E-10,2E-2])
 
 def plot4(curs):
-    M,mgas,mstar,mtot=gettable(curs,cols='Mr,mgas,mass,mtot',where='mtot NOTNULL ',table='sb')
+    M,mgas,mstar,mtot,msph,mdisk=gettable(curs,cols='Mr,mgas,mass,mtot,dynMassDisk,dynMassSphere',where='mtot NOTNULL ',table='sb')
+    P.semilogy(M,msph,'yo',label='dyn. mass (sphere)')
+    P.semilogy(M,mdisk,'ko',label='dyn. mass (disk)')
     P.semilogy(M,mstar,'ro',label='mass in stars')
     P.semilogy(M,mtot,'go',label='total mass')
     P.semilogy(M,mgas,'bo',label='mass in gas')
     P.legend()
-    P.xlabel('Mr')
+    P.xlabel(r'$M_r$')
+    P.ylabel(r'$Mass\quad(M_\odot)$')
+    P.title(r'Mass comparisons (starbursts only)')
 
 def plot5(curs):
     mtot,bpara,bpara2,age=gettable(curs,cols='mtot,bpara,bpara2,age',where='mtot NOTNULL AND agn=0 AND bpara NOTNULL',table='sb')
-    b,label=bpara,'<b>'
+    b,label=bpara,r'$<b>$'
     mtot=N.log10(mtot)
     X=N.arange(8,12,0.2,dtype='f')
     mean=sdss.averbins(X,mtot,b,median=True)
-    P.scatter(mtot,b,s=age/1E8)
+    P.scatter(mtot,b,s=age/1E8,alpha=0.4)
     P.plot(X[1:-1],mean[1:-1],'r-o')
-    P.xlabel('log(total mass)')
+    P.xlabel(r'$\log_{10}(m_{tot})')
     P.ylabel(label)
     P.legend(('median','symbol size: age'))
+    P.axis([7.9537021982310101, 11.904518405306973, -0.45166015625, 12.17041015625])
 
 def plot6(curs):
-    sbM,sbD,fade,age=gettable(curs,cols='Mr,voldens,fade,age',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND age>5E5 AND mf>0.05 AND age NOTNULL',table='sb')
+    sbM,sbD,fade,age=gettable(curs,cols='Mr,voldens,fade,age',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND mf>0.025 AND age NOTNULL',table='sb')
     pbM,pbD=gettable(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL',table='pb')
     sfM=N.array(sbM)+N.array(fade)
     fact=8E8/age
     fusk=1
     sfD=sbD*fact
-    X=N.arange(-24,-14,0.99,dtype='f')
+    X=N.arange(-23,-15.5,1/3.0,dtype='f')
     pby=sdss.lumfu(X,pbM,pbD)*fusk
     sby=sdss.lumfu(X,sbM,sbD)*fusk
     say=sdss.lumfu(X,sfM,sfD)*fusk
     sfy=sdss.lumfu(X,sfM,sbD)*fusk
     P.semilogy(X,pby,'r-o',label=r'postbursts')
-    P.semilogy(X,sby,'b-o',label=r'starbursts, mf>5%')
+    P.semilogy(X,sby,'b-o',label=r'starbursts, $mf>2.5\%$')
     P.semilogy(X,sfy,'gD-',label=r'faded starbursts')
     P.semilogy(X,say,'r--^',label=r'faded starburts, age corrected')
     P.xlabel(r'$M_r$')
-    P.ylabel(r'$\Phi$ [Mpc$^{-3}$]')
-    P.legend(loc='lower right')
-    P.axis([-24.5,-13.5,fusk*0.9E-13,fusk*1.05E-4])
+    P.ylabel(r'$\Phi\quad [\mathrm{Mpc}^{-3}\, \mathrm{mag}^{-1}]$')
+    P.rcParams.update({'legend.fontsize':10})
+    P.legend(loc='upper left')
+    P.axis([-24.2,-15.5,4E-10,2E-2])
 
 def plot7(curs):
     M,mgas,mstar,mtot,sfr,bpara2=gettable(curs,cols='Mr,mgas,mass,mtot,sfr,bpara2',where='mtot NOTNULL AND sfr NOTNULL and agn=0',table='sb')
-    P.loglog(mtot,mgas/sfr,'r.',label='b<3')
+    P.loglog(mtot,mgas/sfr,'r.',label=r'$b<3$',alpha=0.3)
     mtot=masked_where(bpara2<3,mtot)
-    P.loglog(mtot,mgas/sfr,'b.',label='b>3')
+    P.loglog(mtot,mgas/sfr,'b.',label=r'$b>3$')
     P.xlabel(r'$M_{total}$')
     P.ylabel(r'$M_{gas} / SFR$')
     P.title('Gas consumption')
     P.legend(loc='upper left')
-
+    P.axis([1E7,1E12,1E8,1E11])
 
 def plot8(curs):
-    cols='Mr,mtot,age'
-    where='mtot NOTNULL AND Mr NOTNULL'
-    M1,mtot1,age1=gettable(curs,cols=cols,where=where+' AND mf <0.025 AND bpara<3',table='sb')
-    M2,mtot2,age2=gettable(curs,cols=cols,where=where+' AND mf >0.025 AND bpara<3',table='sb')
-    M3,mtot3,age3=gettable(curs,cols=cols,where=where+' AND mf <0.025 AND bpara>3',table='sb')
-    M4,mtot4,age4=gettable(curs,cols=cols,where=where+' AND mf >0.025 AND bpara>3',table='sb')
-    P.semilogy(M2,age2,'b.',label='b<3, mf >2.5%')
-    P.semilogy(M1,age1,'r.',label='b<3, mf <2.5%')
-#    P.semilogy(M3,age3,'g.',label='b>3, mf <2.5%')
-#    P.semilogy(M4,age4,'b.',label='b>3, mf >2.5%')
-    P.xlabel(r'$M_{r}$')
-    P.ylabel(r'Age [yr]')
-    P.legend(loc='lower right')
-
-def plot8a(curs):
     cols='mtot,age'
     where='mtot NOTNULL AND Mr NOTNULL and bpara > 2.5'
     mtot1,age1=gettable(curs,cols=cols,where=where+' AND bpara2>3',table='sb')
@@ -295,31 +280,41 @@ def plot8a(curs):
     mtot3,age3=gettable(curs,cols=cols,where=where+' AND mf >0.025',table='sb')
     P.subplot(131)
     P.ylabel(r'Age [yr]')
-    P.title('b > 3')
-    P.xlabel(r'total mass')
+    P.title(r'$b > 3$')
+    P.xlabel(r'$m_{tot}$')
     P.loglog(mtot1,age1,'b.',label='b>3')
     axi=P.axis()
 
     P.subplot(132)
-    P.title('b > 3, mf > 2.5%')
+    P.title(r'$b > 3, mf > 2.5\%$')
     P.loglog(mtot2,age2,'b.',label='b>3, mf >2.5%')
     ax=P.gca()
     ax.set_yticklabels([])
     P.axis(axi)
 
     P.subplot(133)
-    P.title('mf >2.5%')
+    P.title(r'$mf >2.5\%$')
     P.loglog(mtot3,age3,'b.',label='mf >2.5%')
     ax=P.gca()
     ax.set_yticklabels([])
     P.axis(axi)
 
 def plot9(curs):
-    u,g,r = gettable(curs,cols='m_u,m_g,m_r',where='z<5',table='sb')
-
-    P.plot(g-r,u-g,'ob')
+    ax1=P.subplot(1,2,1)
+    u,g,r = gettable(curs,cols='m_u,m_g,m_r',where='agn=1',table='sb')
+    P.plot(g-r,u-g,'.g',alpha=0.2,label='agn')
+    u,g,r = gettable(curs,cols='m_u,m_g,m_r',where='agn=0',table='sb')
+    #P.plot(g-r,u-g,'.b',alpha=0.3,label='starbursts')
+    P.axis([-1,2,-0.5,3])
     P.xlabel('g-r')
     P.ylabel('u-g')
+    ax2=P.subplot(1,2,2)
+    u,g,r = gettable(curs,cols='m_u,m_g,m_r',where='agn=1',table='pb')
+    P.plot(g-r,u-g,'.r',alpha=0.3,label='postbursts')
+    P.axis([-1,2,-0.5,3])
+    P.setp(P.gca(),'yticklabels',[])
+    P.subplots_adjust(wspace=0)
+
 
 def plot10(curs):
     Ha_h,Hb_h,z = gettable(curs,cols='Ha_h,Hb_h,z',where='Mr < -18 and Mr > -20',table='sb')
@@ -334,12 +329,12 @@ def plot10(curs):
 
 def plot11(curs):
     age,mtot,mf,b=gettable(curs,cols='age,mtot,mf,bpara',where='bpara2 > 3',table='sb')
-    P.loglog(mtot,age,'Db',label='b>3')
+    P.loglog(mtot,age,'Db',label=r'$b>3$')
     mtot=masked_where(mf<0.025,mtot)
-    P.loglog(mtot,age,'Dg',label='b>3, mf>2.5%')
+    P.loglog(mtot,age,'Dg',label=r'$b>3, mf>2.5\%$')
     mtot=masked_where(b<3,mtot)
-    P.loglog(mtot,age,'Dr',label='b>3, mf>2.5%, <b> >3')
-    P.xlabel('total mass')
+    P.loglog(mtot,age,'Dr',label=r'$b>3, mf>2.5\%, <b> >3$')
+    P.xlabel(r'$m_{tot}$')
     P.ylabel('age')
     P.legend(loc='lower right')
 
@@ -349,63 +344,64 @@ def plot12(curs):
     b2=masked_where(age<=5E7,b)
     b2=masked_where(age>=5E8,b2)
     b3=masked_where(age<=5E8,b)
-    P.semilogx(mtot,b3,',r',label='age > 5E8 yr')
-    P.semilogx(mtot,b2,'.b',label='5E7 < age < 5E8 yr')
-    P.semilogx(mtot,b1,'.k',label='age < 5E7 yr')
+    P.semilogx(mtot,b3,',r',label=r'age $> 5E8 yr$')
+    P.semilogx(mtot,b2,'.b',label=r'$5E7 <$ age $< 5E8 yr$')
+    P.semilogx(mtot,b1,'.k',label=r'age $< 5E7 yr$')
     P.axis([5E8,1E12,-1,15])
-    P.xlabel('total mass')
-    P.ylabel('<b>')
+    P.xlabel(r'$m_{tot}$')
+    P.ylabel(r'$<b>$')
     P.legend(loc='upper right')
 
 def plot13(curs):
-    b,Ha_w,Ha_w_fit=gettable(curs,cols='bpara2,Ha_w,Ha_w_fit',where='Ha_w > 120',table='sb')
-    P.plot(Ha_w_fit,b,'r.',label='Ha_w_fit')
-    P.plot(Ha_w,b,'b.',label='Ha_w')
-    P.xlabel('W(Ha)')
-    P.ylabel('b')
+    b,Ha_w,Ha_w_fit=gettable(curs,cols='bpara2,Ha_w,Ha_w_fit',where='Ha_w > 120 and age < 1.1E8',table='sb')
+    P.plot(Ha_w_fit,b,'r.',label=r'$\mathrm{EW}(H\alpha)_{fit}$', alpha=0.5)
+    P.plot(Ha_w,b,'b.',label=r'$\mathrm{EW}(H\alpha)$', alpha=0.5)
+    P.xlabel(r'$\mathrm{EW}(H\alpha)$')
+    P.ylabel(r'$b$')
     P.axis([0,500,-1,10])
     P.legend(loc='upper right')
 
 def plot14(curs):
     dynMassDisk,dynMassSphere=gettable(curs,cols='dynMassDisk,dynMassSphere',where='agn=0',table='sb')
-    P.loglog(dynMassDisk,dynMassSphere,'.b')
+    P.loglog(dynMassDisk,dynMassSphere,'.b', alpha=0.5, label='starbursts')
     dynMassDisk,dynMassSphere=gettable(curs,cols='dynMassDisk,dynMassSphere',where='agn=0',table='pb')
-    P.loglog(dynMassDisk,dynMassSphere,'.r')
+    P.loglog(dynMassDisk,dynMassSphere,'.r', alpha=0.5, label='postbursts')
     P.grid()
-    P.xlabel('M_dyn_disk')
-    P.ylabel('M_dyn_sphere')
+    P.xlabel(r'$M_{dyn,disk}$')
+    P.ylabel(r'$M_{dyn,sphere}$')
 
 def plot15(curs):
     mp,md1,md2=gettable(curs,cols='mtot,dynMassDisk,dynMassSphere',where='agn=0',table='sb')
     md=(md1+md2)/2.0
-    P.loglog(mp,md,'.b')
+    P.loglog(mp,md,'.b',alpha=0.5)
     mp,md1,md2=gettable(curs,cols='mtot,dynMassDisk,dynMassSphere',where='agn=0',table='pb')
     md=(md1+md2)/2.0
     P.loglog(mp,md,'.r')
     P.grid()
-    P.xlabel('M_phot')
-    P.ylabel('M_dyn')
+    P.xlabel(r'$M_{phot}')
+    P.ylabel(r'$M_{dyn}')
 
 def plot16(curs):
     b1,b2=gettable(curs,cols='bpara2,bpara3',where='agn=0',table='sb')
-    P.plot(b1,b2,'.b')
+    P.plot(b1,b2,'.b',alpha=0.5)
     b1,b2=gettable(curs,cols='bpara2,bpara3',where='agn=0',table='pb')
     P.plot(b1,b2,'.r')
     P.grid()
-    P.xlabel('b_phot')
-    P.ylabel('b_dyn')
-    P.axis([-1,20,-1,20])
+    P.xlabel(r'$b_{phot}')
+    P.ylabel(r'$b_{dyn}')
+    P.axis([-0.1,5,-0.1,5])
 
 def plot17(curs):
     mp,md1,md2=gettable(curs,cols='mtot,dynMassDisk,dynMassSphere',where='agn=0 and mtot NOTNULL',table='sb')
     md=(md1+md2)/2.0
-    P.semilogx(mp,md/mp,'.b')
+    P.semilogx(mp,md/mp,'.b',alpha=0.5)
     mp,md1,md2=gettable(curs,cols='mtot,dynMassDisk,dynMassSphere',where='agn=0 and mtot NOTNULL',table='pb')
     md=(md1+md2)/2.0
     P.semilogx(mp,md/mp,'.r')
     P.grid()
-    P.xlabel('M_phot')
-    P.ylabel('M_dyn/M_phot')
+    P.xlabel(r'$M_{phot}$')
+    P.ylabel(r'$M_{dyn} / M_{phot}$')
+    P.axis([2E7,9E11,-1,80])
 
 def plot18(curs):
     bins=N.array([5.5,6.0,6.5,7.0,7.5,8.0,8.5,9.0,9.5,10.0])
