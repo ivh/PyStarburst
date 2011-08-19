@@ -227,13 +227,17 @@ def averbins(X,orgX,Y,median=False):
         #sigma[i]=tmp.std()
     return mean
 
+def corr_sigma_instr(sigma):
+    instrument_sigma=60
+    return N.sqrt(sigma**2 - instrument_sigma**2)
+
 def dynMassDisk(r,sigma):
     'r in kpc, sigma in km/s, returns solar masses'
-    return 7.9E5 * r * sigma**2
+    return 7.9E5 * r * corr_sigma_instr(sigma)**2
 
 def dynMassSphere(r,sigma):
     'r in kpc, sigma in km/s, returns solar masses'
-    return 1.1E6 * r * sigma**2
+    return 1.1E6 * r * corr_sigma_instr(sigma)**2
 
 def fillDynMasses(curs):
     createcolumnifnotexists(curs,'dynMassDisk')
