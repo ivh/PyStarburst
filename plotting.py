@@ -304,7 +304,7 @@ def plot9(curs):
     u,g,r = gettable(curs,cols='m_u,m_g,m_r',where='agn=1',table='sb')
     P.plot(g-r,u-g,'.g',alpha=0.2,label='agn')
     u,g,r = gettable(curs,cols='m_u,m_g,m_r',where='agn=0',table='sb')
-    #P.plot(g-r,u-g,'.b',alpha=0.3,label='starbursts')
+    P.plot(g-r,u-g,'.b',alpha=0.3,label='starbursts')
     P.axis([-1,2,-0.5,3])
     P.xlabel('g-r')
     P.ylabel('u-g')
