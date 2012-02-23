@@ -345,19 +345,13 @@ def fill_beta(curs):
         curs.execute("UPDATE galex SET beta=%f WHERE gid=%d"%(beta,id))
 
 def fill_agn(curs):
-    ids=gettable(curs,cols='sid',where='(Ha_h >0) AND (Hb_h>0) AND (OIII_h>0) AND (NII_h>0)',table='sdss')[0]
+    ids=gettable(curs,cols='sid',where='(Ha_h >0) AND (Hb_h>0) AND (OIII_h>0) AND (NII_h>0)',table='sdss')
     x,y,sig=gettable(curs,cols='NII_h/Ha_h,OIII_h/Hb_h,Ha_s',where='(Ha_h >0) AND (Hb_h>0) AND (OIII_h>0) AND (NII_h>0)',table='sdss')
     x=N.log10(N.array(x))
     y=N.log10(N.array(y))
-    limit=mylee(x)
+    agn=N.where( (y>mylee) | (sig > 5),1,0)
     for i,id in enumerate(ids):
-        #print id,y[i],limit[i]
-        if (y[i]<limit[i]) and (sig[i] < 5):
-            curs.execute("UPDATE sdss SET agn=0 WHERE sid=%s"%(id,))
-        else:
-            #print x[i],y[i],limit[i],sig[i]
-            curs.execute("UPDATE sdss SET agn=1 WHERE sid=%s"%(id,))
-
+        curs.execute("UPDATE sdss SET agn=%s WHERE sid=%s"%(agn[i],id))
 
 
 def fill_galex(curs,galex):
@@ -379,7 +373,7 @@ def fill_sdss(curs,sdss):
     """
     objID,specobjID=N.loadtxt(sdss,skiprows=1,unpack=True,dtype='S',delimiter=',',usecols=(0,1))
     ra,dec,l,b,z,mag_u,mag_g,mag_r,mag_i,mag_z,petroRad_u,petroR50_u,extinction_u,isoA_u,isoB_u,Ha_w,Ha_h,Ha_s,Hb_h,OIII_h,NII_h=N.loadtxt(sdss,skiprows=1,unpack=True,dtype='Float64',delimiter=',',usecols=tuple(N.arange(21)+2))
-    curs.execute('CREATE TABLE IF NOT EXISTS sdss (sid INTEGER, specid INTEGER, ra REAL, dec REAL, l REAL, b REAL, z REAL, mag_u REAL, mag_g REAL, mag_r REAL, mag_i REAL, mag_z REAL, petroRad_u REAL, petroR50_u REAL, ext_u REAL, isoA_u REAL, isoB_u REAL, Ha_w REAL, Ha_h REAL, Ha_s REAL, Hb_h REAL, OIII_h REAL, NII_h REAL, agn INTEGER, Ha_lum REAL);')
+    curs.execute('CREATE TABLE IF NOT EXISTS sdss (sid INTEGER, specid INTEGER, ra REAL, dec REAL, l REAL, b REAL, z REAL, mag_u REAL, mag_g REAL, mag_r REAL, mag_i REAL, mag_z REAL, petroRad_u REAL, petroR50_u REAL, ext_u REAL, isoA_u REAL, isoB_u REAL, Ha_w REAL, Ha_h REAL, Ha_s REAL, Hb_h REAL, OIII_h REAL, NII_h REAL, agn INTEGER DEFAULT 0, Ha_lum REAL);')
     for i,id in enumerate(objID):
         d=(id,specobjID[i],ra[i],dec[i],l[i],b[i],z[i],mag_u[i],mag_g[i],mag_r[i],mag_i[i],mag_z[i],petroRad_u[i],petroR50_u[i],extinction_u[i],isoA_u[i],isoB_u[i],Ha_w[i],Ha_h[i],Ha_s[i],Hb_h[i],OIII_h[i],NII_h[i])
         curs.execute('INSERT INTO sdss VALUES (%s,%s,%f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, NULL, NULL);'%d)
@@ -391,19 +385,20 @@ def makedb(dbname=DBNAME,sdss='sdss.csv',galex='galex.csv'):
     fill_sdss(curs,sdss)
     conn.commit()
 
-    fill_galex(curs,'galex_foreign.csv')
-    fill_sdss(curs,'sdss_foreign.csv')
-    conn.commit()
+    #fill_galex(curs,'galex_foreign.csv')
+    #fill_sdss(curs,'sdss_foreign.csv')
+    #conn.commit()
 
     # get the "external" runs in..
-    for run in ['green','mccand','heck1','heck2','heck3','sel']:
-        curs.execute('CREATE TABLE %s (sid INTEGER);'%run)
-        sid=N.loadtxt('%s_targets'%run,skiprows=1,unpack=True,dtype='S',usecols=(0,))
-        for id in sid:
-            curs.execute('INSERT INTO %s VALUES (%s)'%(run,id))
-    curs.execute('create view heck as select * from heck1 union select * from heck2 union select * from heck3')
-    conn.commit()
+    #for run in ['green','mccand','heck1','heck2','heck3','sel']:
+    #    curs.execute('CREATE TABLE %s (sid INTEGER);'%run)
+    #    sid=N.loadtxt('%s_targets'%run,skiprows=1,unpack=True,dtype='S',usecols=(0,))
+    #    for id in sid:
+    #        curs.execute('INSERT INTO %s VALUES (%s)'%(run,id))
+    #curs.execute('create view heck as select * from heck1 union select * from heck2 union select * from heck3')
+    #conn.commit()
 
+    return conn
     # do the work
     fill_agn(curs)
     fill_beta(curs)
@@ -412,6 +407,7 @@ def makedb(dbname=DBNAME,sdss='sdss.csv',galex='galex.csv'):
     fill_fuv_int(curs)
 
     conn.commit()
+    return conn
 
 def dump_selection(curs,outfile='selection.html',where=''):
     urlbase='http://cas.sdss.org/dr7/en/tools/explore/obj.asp?id='
