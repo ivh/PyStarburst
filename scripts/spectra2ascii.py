@@ -8,9 +8,12 @@ from sdss import *
 OUTDIR='asciispec/'
 conn,curs=DB.setupdb()
 
-curs.execute('select objID,specObjID,plate,mjd,fiberID,z,Ha_w,Ha_h,Ha_s,Hb_w,Hd_w,agn,Mr from clean')
+fields = 'objID,specObjID,plate,mjd,fiberID,z,Ha_w,Ha_h,Ha_s,Hb_w,Hd_w,O3727_s,agn,Mr,ext_g'
 
-for objID,specObjID,plate,mjd,fiberID,z,Ha_w,Ha_h,Ha_s,Hb_w,Hd_w,agn,Mr in curs:
+curs.execute('select %s from clean'%(fields,))
+
+for values in curs:
+    exec('%s = values'%(fields,))
     fname=DB.getspecfilename((mjd,plate,fiberID))
     try: fits=F.open(fname)
     except: stderr.write('Error in file %s\n'%fname); continue
@@ -20,13 +23,8 @@ for objID,specObjID,plate,mjd,fiberID,z,Ha_w,Ha_h,Ha_s,Hb_w,Hd_w,agn,Mr in curs:
     outf=open(OUTDIR+'%s.spec'%specObjID,'w')
     outf.write('%d\n'%objID)
     outf.write('%s\n'%agn)
-    outf.write('%.8e\n'%Mr)
-    outf.write('%.8e\n'%z)
-    outf.write('%.8e\n'%Ha_h)
-    outf.write('%.8e\n'%Ha_w)
-    outf.write('%.8e\n'%Ha_s)
-    outf.write('%.8e\n'%Hb_w)
-    outf.write('%.8e\n'%Hd_w)
+    outf.write( '\n'.join( ['%.8e'%x for x in Mr,ext_g,z,Ha_h,Ha_w,Ha_s,Hb_w,Hd_w,O3727_s] ) )
+    outf.write('\n')
     for i,s in enumerate(spec):
             outf.write('%.8e %.8e %.8e\n'%(wave[i],s,noise[i]))
     outf.close()
