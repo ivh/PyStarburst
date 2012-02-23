@@ -353,9 +353,9 @@ def plot12(curs):
     P.legend(loc='upper right')
 
 def plot13(curs):
-    b,Ha_w,Ha_w_fit=gettable(curs,cols='bpara2,Ha_w,Ha_w_fit',where='Ha_w > 120 and age < 1.1E8',table='sb')
+    b,Ha_w,Ha_w_fit=gettable(curs,cols='bpara2,Ha_w,Ha_w_fit',where='Ha_w > 120 and age < 1.1E9',table='sb')
     P.plot(Ha_w_fit,b,'r.',label=r'$\mathrm{EW}(H\alpha)_{fit}$', alpha=0.5)
-    P.plot(Ha_w,b,'b.',label=r'$\mathrm{EW}(H\alpha)$', alpha=0.5)
+    #P.plot(Ha_w,b,'b.',label=r'$\mathrm{EW}(H\alpha)$', alpha=0.5)
     P.xlabel(r'$\mathrm{EW}(H\alpha)$')
     P.ylabel(r'$b$')
     P.axis([0,500,-1,10])
