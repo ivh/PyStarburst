@@ -105,7 +105,7 @@ def plot_z_fuv_prop(curs):
     P.plot(z,N.log10(fuv),'or')
     P.xlabel('$z$')
     P.ylabel(r'$\log(L_{FUV})$')
-    
+
 def xyHaLum(curs,where):
     return gettable(curs,'s.Ha_w,g.fuv_lum',table='sdss s, galex g',where='g.sid=s.sid AND g.fuv_corr NOT NULL AND s.z NOT NULL AND s.agn=0 AND %s'%where)
 def plot_Ha_lum(curs):
@@ -162,7 +162,7 @@ def plot_Ha_int(curs):
     P.xlabel(r'W(H$_\alpha$)')
     P.ylabel(r'I$_{FUV}$')
     P.legend(loc='lower right')
-    
+
 def xyHaBeta(curs,where):
     return gettable(curs,'s.Ha_w,g.beta',table='sdss s, galex g',where='g.sid=s.sid AND g.fuv_corr NOT NULL AND s.z NOT NULL AND s.agn=0 AND %s'%where)
 def plot_Ha_beta(curs):
@@ -217,7 +217,7 @@ def plotprop(curs):
     P.setp(ax2.get_yticklabels(), visible=False)
     ax1.axis([0.025,0.185,8.95,10.78])
     ax2.axis([1.9,3.01,8.95,10.78])
-    
+
 def plotall(curs):
     P.clf()
     P.subplot(231)
@@ -242,7 +242,7 @@ def detcolor(curs,sid):
     if curs.fetchone(): return '#429fff'
 
     return 'y'
-    
+
 
 def plotselimages(curs):
     import Image
@@ -250,7 +250,7 @@ def plotselimages(curs):
     P.rc('xtick', labelsize=8)
     P.figure(figsize=(10,4.96))
     P.subplots_adjust(0.01,0.01,0.99,0.99,0.02,0.02)
-    
+
     ax1=P.axes([0.38,0.01,0.30,0.32])
     #plot_z_fuv_prop(curs)
     ax2=P.axes([0.68,0.01,0.31,0.32],sharey=ax1)
@@ -299,7 +299,7 @@ def getselimages(curs):
         f.write(im.read())
         f.close()
         im.close()
-    
+
 
 #
 # FILLING CERTAIN DATABASE-TABLES
@@ -310,13 +310,13 @@ def fill_ext(curs):
     for sid,gid,ext,fuv in query.fetchall():
         que="UPDATE galex SET fuv_corr=%f WHERE gid=%d"%(fuv*uext2fuv(ext),gid)
         curs.execute(que)
-    
+
 def fill_fuv_lum(curs):
     query=curs.execute("SELECT g.sid,g.gid,s.ext_u,g.fuv_corr,s.z FROM sdss s, galex g WHERE g.sid=s.sid")
     for sid,gid,ext,fuv,z in query.fetchall():
         que="UPDATE galex SET fuv_lum=%f WHERE gid=%d"%(micJy2SolarLum(fuv,z),gid)
         curs.execute(que)
-    
+
 def fill_fuv_int(curs):
     query=curs.execute("SELECT g.sid,g.gid,g.fuv_lum,s.z,s.petroR50_u FROM sdss s, galex g WHERE g.sid=s.sid")
     for sid,gid,fuv_lum,z,r in query.fetchall():
@@ -328,13 +328,13 @@ def fill_fuv_int(curs):
             curs.execute("UPDATE galex SET compact=1 WHERE gid=%d"%gid)
         else:
             curs.execute("UPDATE galex SET compact=0 WHERE gid=%d"%gid)
-    
+
 def fill_Ha_lum(curs):
     query=curs.execute("SELECT sid,z,Ha_h,Ha_s FROM sdss")
     for id,z,height,width in query.fetchall():
         que="UPDATE sdss SET Ha_lum=%f WHERE sid=%d"%(sdssflux2Watt(height,width,z)/3.846E26,id) # IN SOLAR LUMINOSITIES
         curs.execute(que)
-    
+
 def fill_beta(curs):
     query=curs.execute("SELECT gid,fuv,nuv FROM galex")
     c=N.log10(1530.0/2270.0)
@@ -343,7 +343,7 @@ def fill_beta(curs):
         beta=-1*N.log10(fuv/nuv*d) /c
         #print fuv,nuv,beta
         curs.execute("UPDATE galex SET beta=%f WHERE gid=%d"%(beta,id))
-    
+
 def fill_agn(curs):
     ids=gettable(curs,cols='sid',where='(Ha_h >0) AND (Hb_h>0) AND (OIII_h>0) AND (NII_h>0)',table='sdss')[0]
     x,y,sig=gettable(curs,cols='NII_h/Ha_h,OIII_h/Hb_h,Ha_s',where='(Ha_h >0) AND (Hb_h>0) AND (OIII_h>0) AND (NII_h>0)',table='sdss')
@@ -363,7 +363,7 @@ def fill_agn(curs):
 def fill_galex(curs,galex):
     """
     galex columns:sid,gid,distance,xnum,fuv,nuv
-    
+
     """
     sid,gid,xnum=N.loadtxt(galex,skiprows=1,unpack=True,dtype='S',delimiter=',',usecols=(0,1,3))
     distance,fuv,nuv=N.loadtxt(galex,skiprows=1,unpack=True,dtype='Float64',delimiter=',',usecols=(2,4,5))
@@ -372,7 +372,7 @@ def fill_galex(curs,galex):
         d=(id,sid[i],fuv[i],nuv[i],xnum[i],distance[i])
         if (fuv[i]>0) and (nuv[i]>0):
             curs.execute('INSERT INTO galex VALUES (%s,%s,%f,%f,%s,%f,NULL, NULL, NULL, NULL, NULL);'%d)
-    
+
 def fill_sdss(curs,sdss):
     """
     sdss columns: objID,specobjID,ra,dec,l,b,z,mag_u,mag_g,mag_r,mag_i,mag_z,petroRad_u,petroR50_u,extinction_u,isoA_u,isoB_u,Ha_w,Ha_h,Ha_s,Hb_h,OIII_h,NII_h
@@ -384,11 +384,11 @@ def fill_sdss(curs,sdss):
         d=(id,specobjID[i],ra[i],dec[i],l[i],b[i],z[i],mag_u[i],mag_g[i],mag_r[i],mag_i[i],mag_z[i],petroRad_u[i],petroR50_u[i],extinction_u[i],isoA_u[i],isoB_u[i],Ha_w[i],Ha_h[i],Ha_s[i],Hb_h[i],OIII_h[i],NII_h[i])
         curs.execute('INSERT INTO sdss VALUES (%s,%s,%f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, NULL, NULL);'%d)
 
-def makedb(dbname=DBNAME):
+def makedb(dbname=DBNAME,sdss='sdss.csv',galex='galex.csv'):
     conn,curs=setupdb(dbname)
-    fill_galex(curs,'galex.csv')
+    fill_galex(curs,galex)
     conn.commit()
-    fill_sdss(curs,'sdss.csv')
+    fill_sdss(curs,sdss)
     conn.commit()
 
     fill_galex(curs,'galex_foreign.csv')
@@ -403,7 +403,7 @@ def makedb(dbname=DBNAME):
             curs.execute('INSERT INTO %s VALUES (%s)'%(run,id))
     curs.execute('create view heck as select * from heck1 union select * from heck2 union select * from heck3')
     conn.commit()
-                         
+
     # do the work
     fill_agn(curs)
     fill_beta(curs)
@@ -433,7 +433,7 @@ def dump_selection(curs,outfile='selection.html',where=''):
         f.write('<td>%.1f</td><td>%.1f</td>'%(Ha_w,Ha_s))
         x,y=P.log10(NII_h/Ha_h),P.log10(OIII_h/Hb_h)
         f.write('<td>%.2f</td><td>%.2f</td>'%(x,y))
-            
+
         f.write('</tr>')
     f.close()
 
@@ -459,7 +459,7 @@ def dump_foreign(curs,outfile='foreign.html'):
             f.write('<td>%.1f</td><td>%.1f</td>'%(Ha_w,Ha_s))
             x,y=P.log10(NII_h/Ha_h),P.log10(OIII_h/Hb_h)
             f.write('<td>%.2f</td><td>%.2f</td>'%(x,y))
-            
+
             f.write('</tr>')
         f.write('<tr><td colspan=6>&nbsp;</td></tr>')
     f.close()
@@ -476,4 +476,4 @@ def get_galex(file='/home/tom/galex/fluxes_thomasmarquart.csv'):
     sid,gid=P.transpose(P.load(file,skiprows=1,delimiter=',',dtype='Int64',usecols=[0,1]))
     ra,dec,z,fuv_flux,nuv_flux,fuv_corr=P.transpose(P.load(file,skiprows=1,delimiter=',',dtype='Float64',usecols=[2,3,4,5,6,7]))
     return sid,gid,ra,dec,z,fuv_flux,nuv_flux,fuv_corr
- 
+
