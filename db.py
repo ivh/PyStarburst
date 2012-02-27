@@ -71,14 +71,13 @@ TYPES={'agn':'INTEGER',
        'fit_type_young':'INTEGER',
        'primtarget':'INTEGER'
        }
-def createcolumnifnotexists(curs,name):
-    try: curs.execute('SELECT %s from sdss LIMIT 1;'%name)
-    except Exception,e: 
-        #print e
-        print name
-        if TYPES.has_key(name): ty=TYPES[name]
+def createcolumnifnotexists(curs,name,ctype=None,table='sdss'):
+    try: curs.execute('SELECT %s from %s LIMIT 1;'%(name,table))
+    except Exception,e:
+        if ctype: ty = ctype
+        elif TYPES.has_key(name): ty=TYPES[name]
         else: ty='REAL'
-        sql='ALTER TABLE sdss ADD COLUMN %s %s;'%(name,ty)
+        sql='ALTER TABLE %s ADD COLUMN %s %s;'%(table,name,ty)
         print sql
         curs.execute(sql)
 
@@ -126,7 +125,7 @@ def createviews(cursor):
     cursor.execute('CREATE VIEW sb AS SELECT * from clean WHERE Ha_w > 60.0 AND Ha_s>1')
     cursor.execute('CREATE VIEW pb AS SELECT * from clean WHERE Hd_w < -6.0')
     printcomm()
-    
+
 def readfiles(fnames,cursor):
     for fname in fnames:
         print "Working on file: %s"%fname
@@ -156,10 +155,12 @@ def readfiles(fnames,cursor):
 
         file.close()
 
-def getspecfilename((mjd,plate,fiberID)):
-    return join(SPECBASE,'spSpec-%05d-%04d-%03d.fit'%(mjd,plate,fiberID))
+def getspecfilename(mjd,plate,fiberID,addBase=True):
+    if addBase: b = SPECBASE
+    else: b = ''
+    return join(b,'spSpec-%05d-%04d-%03d.fit'%(mjd,plate,fiberID))
 
-def getspecZfilename((mjd,plate)):
+def getspecZfilename(mjd,plate):
     return join(SPECZBASE,'spZline-%04d-%05d.fits'%(plate,mjd))
 
 
@@ -249,7 +250,7 @@ def dumpascispec(curs,where='z<5',table='sdss'):
         for i,s in enumerate(spec):
             outf.write('%.8e %.8e\n'%(wave[i],s))
         outf.close()
-        
+
 #################
 
 def usage_example():
@@ -262,7 +263,7 @@ def usage_example():
 
 
 def main():
-  
+
     if sys.argv[1].endswith('.db'):
         connection,cursor=setupdb(sys.argv[1])
         readfiles(sys.argv[2:],cursor)

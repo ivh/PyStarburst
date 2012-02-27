@@ -306,19 +306,23 @@ def getselimages(curs):
 #
 
 def fill_ext(curs):
-    query=curs.execute("SELECT g.sid,g.gid,s.ext_u,g.fuv FROM sdss s, galex g WHERE g.sid=s.sid")
+    createcolumnifnotexists(curs,'fuv_corr','REAL','galex')
+    query=curs.execute("SELECT g.sid,g.gid,s.extinction_u,g.fuv FROM sdss s, galex g WHERE g.sid=s.ObjID")
     for sid,gid,ext,fuv in query.fetchall():
         que="UPDATE galex SET fuv_corr=%f WHERE gid=%d"%(fuv*uext2fuv(ext),gid)
         curs.execute(que)
 
 def fill_fuv_lum(curs):
-    query=curs.execute("SELECT g.sid,g.gid,s.ext_u,g.fuv_corr,s.z FROM sdss s, galex g WHERE g.sid=s.sid")
+    createcolumnifnotexists(curs,'fuv_lum','REAL','galex')
+    query=curs.execute("SELECT g.sid,g.gid,s.extinction_u,g.fuv_corr,s.z FROM sdss s, galex g WHERE g.sid=s.ObjID")
     for sid,gid,ext,fuv,z in query.fetchall():
         que="UPDATE galex SET fuv_lum=%f WHERE gid=%d"%(micJy2SolarLum(fuv,z),gid)
         curs.execute(que)
 
 def fill_fuv_int(curs):
-    query=curs.execute("SELECT g.sid,g.gid,g.fuv_lum,s.z,s.petroR50_u FROM sdss s, galex g WHERE g.sid=s.sid")
+    createcolumnifnotexists(curs,'fuv_int','REAL','galex')
+    createcolumnifnotexists(curs,'compact','INTEGER','galex')
+    query=curs.execute("SELECT g.sid,g.gid,g.fuv_lum,s.z,s.petroR50_u FROM sdss s, galex g WHERE g.sid=s.ObjID")
     for sid,gid,fuv_lum,z,r in query.fetchall():
         fuv_int=fuv_lum/ (N.pi * (r**2))
         curs.execute("UPDATE galex SET fuv_int=%f WHERE gid=%d"%(fuv_int,gid))
@@ -330,75 +334,53 @@ def fill_fuv_int(curs):
             curs.execute("UPDATE galex SET compact=0 WHERE gid=%d"%gid)
 
 def fill_Ha_lum(curs):
+    createcolumnifnotexists(curs,'Ha_lum','REAL')
     query=curs.execute("SELECT sid,z,Ha_h,Ha_s FROM sdss")
     for id,z,height,width in query.fetchall():
         que="UPDATE sdss SET Ha_lum=%f WHERE sid=%d"%(sdssflux2Watt(height,width,z)/3.846E26,id) # IN SOLAR LUMINOSITIES
         curs.execute(que)
 
 def fill_beta(curs):
+    createcolumnifnotexists(curs,'beta','REAL','galex')
     query=curs.execute("SELECT gid,fuv,nuv FROM galex")
     c=N.log10(1530.0/2270.0)
     d=(2270.0/1530.0)**2
     for id,fuv,nuv in query.fetchall():
         beta=-1*N.log10(fuv/nuv*d) /c
-        #print fuv,nuv,beta
+        if '%f'%beta == 'nan': continue
+        #print fuv,nuv,type(beta)
         curs.execute("UPDATE galex SET beta=%f WHERE gid=%d"%(beta,id))
 
 def fill_agn(curs):
-    ids=gettable(curs,cols='sid',where='(Ha_h >0) AND (Hb_h>0) AND (OIII_h>0) AND (NII_h>0)',table='sdss')
+    createcolumnifnotexists(curs,'agn','INTEGER')
+    ids=gettable(curs,cols='objID',where='(Ha_h >0) AND (Hb_h>0) AND (OIII_h>0) AND (NII_h>0)',table='sdss')
     x,y,sig=gettable(curs,cols='NII_h/Ha_h,OIII_h/Hb_h,Ha_s',where='(Ha_h >0) AND (Hb_h>0) AND (OIII_h>0) AND (NII_h>0)',table='sdss')
     x=N.log10(N.array(x))
     y=N.log10(N.array(y))
     agn=N.where( (y>mylee) | (sig > 5),1,0)
     for i,id in enumerate(ids):
-        curs.execute("UPDATE sdss SET agn=%s WHERE sid=%s"%(agn[i],id))
+        curs.execute("UPDATE sdss SET agn=%s WHERE objID=%s"%(agn[i],id))
 
+def fill_from_csv(curs, filename, tablename):
+    """
+    create columns according to file header and fill them
+    """
+    f = open(filename)
+    cols = f.readline().split(',')
+    types = ['INTEGER', 'INTEGER'] + ['REAL']*(len(cols)-2)
+    coldef = ','.join(['%s %s'%(col,types[i]) for i,col in enumerate(cols)])
 
-def fill_galex(curs,galex):
-    """
-    galex columns:sid,gid,distance,xnum,fuv,nuv
+    curs.execute('CREATE TABLE IF NOT EXISTS %s (%s);'%(tablename,coldef))
 
-    """
-    sid,gid,xnum=N.loadtxt(galex,skiprows=1,unpack=True,dtype='S',delimiter=',',usecols=(0,1,3))
-    distance,fuv,nuv=N.loadtxt(galex,skiprows=1,unpack=True,dtype='Float64',delimiter=',',usecols=(2,4,5))
-    curs.execute('CREATE TABLE IF NOT EXISTS galex (gid INTEGER, sid INTEGER, fuv REAL, nuv REAL, xnum INTEGER, distance REAL, fuv_corr REAL, fuv_lum REAL, fuv_int REAL, compact INTEGER, beta REAL);')
-    for i,id in enumerate(gid):
-        d=(id,sid[i],fuv[i],nuv[i],xnum[i],distance[i])
-        if (fuv[i]>0) and (nuv[i]>0):
-            curs.execute('INSERT INTO galex VALUES (%s,%s,%f,%f,%s,%f,NULL, NULL, NULL, NULL, NULL);'%d)
-
-def fill_sdss(curs,sdss):
-    """
-    sdss columns: objID,specobjID,ra,dec,l,b,z,mag_u,mag_g,mag_r,mag_i,mag_z,petroRad_u,petroR50_u,extinction_u,isoA_u,isoB_u,Ha_w,Ha_h,Ha_s,Hb_h,OIII_h,NII_h
-    """
-    objID,specobjID=N.loadtxt(sdss,skiprows=1,unpack=True,dtype='S',delimiter=',',usecols=(0,1))
-    ra,dec,l,b,z,mag_u,mag_g,mag_r,mag_i,mag_z,petroRad_u,petroR50_u,extinction_u,isoA_u,isoB_u,Ha_w,Ha_h,Ha_s,Hb_h,OIII_h,NII_h=N.loadtxt(sdss,skiprows=1,unpack=True,dtype='Float64',delimiter=',',usecols=tuple(N.arange(21)+2))
-    curs.execute('CREATE TABLE IF NOT EXISTS sdss (sid INTEGER, specid INTEGER, ra REAL, dec REAL, l REAL, b REAL, z REAL, mag_u REAL, mag_g REAL, mag_r REAL, mag_i REAL, mag_z REAL, petroRad_u REAL, petroR50_u REAL, ext_u REAL, isoA_u REAL, isoB_u REAL, Ha_w REAL, Ha_h REAL, Ha_s REAL, Hb_h REAL, OIII_h REAL, NII_h REAL, agn INTEGER DEFAULT 0, Ha_lum REAL);')
-    for i,id in enumerate(objID):
-        d=(id,specobjID[i],ra[i],dec[i],l[i],b[i],z[i],mag_u[i],mag_g[i],mag_r[i],mag_i[i],mag_z[i],petroRad_u[i],petroR50_u[i],extinction_u[i],isoA_u[i],isoB_u[i],Ha_w[i],Ha_h[i],Ha_s[i],Hb_h[i],OIII_h[i],NII_h[i])
-        curs.execute('INSERT INTO sdss VALUES (%s,%s,%f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, NULL, NULL);'%d)
+    for line in f:
+        curs.execute('INSERT INTO %s VALUES (%s)'%(tablename,','.join(['?']*len(cols))), line.split(','))
 
 def makedb(dbname=DBNAME,sdss='sdss.csv',galex='galex.csv'):
     conn,curs=setupdb(dbname)
-    fill_galex(curs,galex)
+    fill_from_csv(curs,sdss,'sdss')
+    fill_from_csv(curs,galex,'galex')
     conn.commit()
-    fill_sdss(curs,sdss)
-    conn.commit()
 
-    #fill_galex(curs,'galex_foreign.csv')
-    #fill_sdss(curs,'sdss_foreign.csv')
-    #conn.commit()
-
-    # get the "external" runs in..
-    #for run in ['green','mccand','heck1','heck2','heck3','sel']:
-    #    curs.execute('CREATE TABLE %s (sid INTEGER);'%run)
-    #    sid=N.loadtxt('%s_targets'%run,skiprows=1,unpack=True,dtype='S',usecols=(0,))
-    #    for id in sid:
-    #        curs.execute('INSERT INTO %s VALUES (%s)'%(run,id))
-    #curs.execute('create view heck as select * from heck1 union select * from heck2 union select * from heck3')
-    #conn.commit()
-
-    return conn
     # do the work
     fill_agn(curs)
     fill_beta(curs)
@@ -411,26 +393,24 @@ def makedb(dbname=DBNAME,sdss='sdss.csv',galex='galex.csv'):
 
 def dump_selection(curs,outfile='selection.html',where=''):
     urlbase='http://cas.sdss.org/dr7/en/tools/explore/obj.asp?id='
-    wanted='s.sid, s.z, g.fuv_lum, g.fuv_int, g.beta, s.agn, s.Ha_w, s.Ha_s, s.Ha_h,s.Hb_h,s.OIII_h,s.NII_h'
+    wanted='s.ObjID, s.z, g.fuv_lum, g.fuv_int, g.beta, s.Ha_w, s.Ha_s, s.Ha_h,s.Hb_h, Hd_w, s.OIII_h,s.NII_h'
     wanto=wanted.replace('s.','').replace('g.','')
     wants=wanto.split(',')
     f=open(outfile,'w')
     f.write('<table border=1>\n')
-    for w in wants[:-4]: f.write('<td>%s</td>'%w)
-    f.write('<td>log(NII/Ha)</td><td>log(OIII/Hb)</td></tr>')
+    for w in wants: f.write('<td>%s</td>'%w)
     if where !='': where='AND %s'%where
-    curs.execute('SELECT DISTINCT %s FROM sdss s, galex g WHERE g.sid=s.sid %s ORDER BY s.z'%(wanted,where))
+    curs.execute('SELECT DISTINCT %s FROM sdss s, galex g WHERE g.sid=s.ObjID %s ORDER BY s.z'%(wanted,where))
     data=curs.fetchall()
-    for sid,z,fuv_lum,fuv_int,beta,agn,Ha_w,Ha_s,Ha_h,Hb_h,OIII_h,NII_h in data:
+    for sid,z,fuv_lum,fuv_int,beta,Ha_w,Ha_s,Ha_h,Hb_h,Hd_w,OIII_h,NII_h in data:
         f.write('<tr>')
         f.write('<td><a href="%s">%s</a></td>'%(urlbase+str(sid),str(sid)))
         f.write('<td>%.3f</td><td>%.3f</td><td>%.3f</td>'%(z,N.log10(fuv_lum),N.log10(fuv_int)))
-        f.write('<td>%.2f</td><td>%s</td>'%(beta,str(agn)))
-        f.write('<td>%.1f</td><td>%.1f</td>'%(Ha_w,Ha_s))
-        x,y=P.log10(NII_h/Ha_h),P.log10(OIII_h/Hb_h)
-        f.write('<td>%.2f</td><td>%.2f</td>'%(x,y))
+        f.write('<td>%.2f</td>'%(beta or N.nan))
+        f.write('<td>%.1f</td><td>%.1f</td><td>%.1f</td>'%(Ha_w,Ha_s,Ha_h))
+        f.write('<td>%.1f</td><td>%.1f</td><td>%.1f</td><td>%.1f</td>'%(Hb_h,Hd_w,OIII_h,NII_h))
 
-        f.write('</tr>')
+        f.write('</tr>\n')
     f.close()
 
 
@@ -472,4 +452,29 @@ def get_galex(file='/home/tom/galex/fluxes_thomasmarquart.csv'):
     sid,gid=P.transpose(P.load(file,skiprows=1,delimiter=',',dtype='Int64',usecols=[0,1]))
     ra,dec,z,fuv_flux,nuv_flux,fuv_corr=P.transpose(P.load(file,skiprows=1,delimiter=',',dtype='Float64',usecols=[2,3,4,5,6,7]))
     return sid,gid,ra,dec,z,fuv_flux,nuv_flux,fuv_corr
+
+
+def fill_galex(curs,galex):
+    """
+    galex columns:sid,gid,distance,xnum,fuv,nuv
+
+    """
+    sid,gid,xnum=N.loadtxt(galex,skiprows=1,unpack=True,dtype='S',delimiter=',',usecols=(0,1,3))
+    distance,fuv,nuv=N.loadtxt(galex,skiprows=1,unpack=True,dtype='Float64',delimiter=',',usecols=(2,4,5))
+    curs.execute('CREATE TABLE IF NOT EXISTS galex (gid INTEGER, sid INTEGER, fuv REAL, nuv REAL, xnum INTEGER, distance REAL, fuv_corr REAL, fuv_lum REAL, fuv_int REAL, compact INTEGER, beta REAL);')
+    for i,id in enumerate(gid):
+        d=(id,sid[i],fuv[i],nuv[i],xnum[i],distance[i])
+        if (fuv[i]>0) and (nuv[i]>0):
+            curs.execute('INSERT INTO galex VALUES (%s,%s,%f,%f,%s,%f,NULL, NULL, NULL, NULL, NULL);'%d)
+
+def fill_sdss(curs,sdss):
+    """
+    sdss columns: objID,specobjID,ra,dec,l,b,z,mag_u,mag_g,mag_r,mag_i,mag_z,petroRad_u,petroR50_u,extinction_u,isoA_u,isoB_u,Ha_w,Ha_h,Ha_s,Hb_h,OIII_h,NII_h, Hd_w
+    """
+    objID,specobjID=N.loadtxt(sdss,skiprows=1,unpack=True,dtype='S',delimiter=',',usecols=(0,1))
+    ra,dec,l,b,z,mag_u,mag_g,mag_r,mag_i,mag_z,petroRad_u,petroR50_u,extinction_u,isoA_u,isoB_u,Ha_w,Ha_h,Ha_s,Hb_h,OIII_h,NII_h,Hd_w=N.loadtxt(sdss,skiprows=1,unpack=True,dtype='Float64',delimiter=',',usecols=tuple(N.arange(22)+2))
+    curs.execute('CREATE TABLE IF NOT EXISTS sdss (sid INTEGER, specid INTEGER, ra REAL, dec REAL, l REAL, b REAL, z REAL, mag_u REAL, mag_g REAL, mag_r REAL, mag_i REAL, mag_z REAL, petroRad_u REAL, petroR50_u REAL, ext_u REAL, isoA_u REAL, isoB_u REAL, Ha_w REAL, Ha_h REAL, Ha_s REAL, Hb_h REAL, OIII_h REAL, NII_h REAL, agn INTEGER DEFAULT 0, Ha_lum REAL, Hd_w);')
+    for i,id in enumerate(objID):
+        d=(id,specobjID[i],ra[i],dec[i],l[i],b[i],z[i],mag_u[i],mag_g[i],mag_r[i],mag_i[i],mag_z[i],petroRad_u[i],petroR50_u[i],extinction_u[i],isoA_u[i],isoB_u[i],Ha_w[i],Ha_h[i],Ha_s[i],Hb_h[i],OIII_h[i],NII_h[i])
+        curs.execute('INSERT INTO sdss VALUES (%s,%s,%f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, NULL, NULL);'%d)
 
