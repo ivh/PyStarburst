@@ -126,12 +126,12 @@ def createviews(cursor):
     cursor.execute('CREATE VIEW pb AS SELECT * from clean WHERE Hd_w < -6.0')
     printcomm()
 
-def readfiles(fnames,cursor):
+def readfiles(fnames,cursor,table='sdss',delim=DELIM):
     for fname in fnames:
         print "Working on file: %s"%fname
         file=open(fname)
-        cols=map(string.strip,file.readline().split(DELIM))
-        types=map(string.strip,file.readline().split(DELIM))
+        cols=map(string.strip,file.readline().split(delim))
+        types=map(string.strip,file.readline().split(delim))
         print 'found columns: %s'%cols
         poplist=[] # the ones we really want
         for i,c in enumerate(cols):
@@ -139,9 +139,7 @@ def readfiles(fnames,cursor):
                 print 'skipping column %d'%i
                 poplist.append(i)
                 continue
-            comm='ALTER TABLE sdss ADD COLUMN %s %s'%(c,types[i])
-            try: cursor.execute(comm)
-            except: print 'not adding pre-existing column: %s'%c
+            createcolumnifnotexists(c,table=table)
 
         poplist=N.array(poplist)-N.arange(len(poplist))
         for p in poplist:
