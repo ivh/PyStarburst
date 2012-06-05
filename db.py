@@ -122,32 +122,31 @@ def createviews(cursor):
     cursor.execute('create view pball as select * from sdss inner join pbfit on pbfit.ID=sdss.specObjID;')
     printcomm()
 
-def readfiles(fnames,cursor,table='sdss',delim=DELIM):
-    for fname in fnames:
-        print "Working on file: %s"%fname
-        file=open(fname)
+def readfile(fname,cursor,table='sdss',delim=DELIM,cnames=None,ctypes=None):
+    file=open(fname)
+    if not cnames:
         cols=map(string.strip,file.readline().split(delim))
+    if not ctypes:
         types=map(string.strip,file.readline().split(delim))
-        print 'found columns: %s'%cols
-        poplist=[] # the ones we really want
-        for i,c in enumerate(cols):
-            if c=='kasta':
-                print 'skipping column %d'%i
-                poplist.append(i)
-                continue
-            createcolumnifnotexists(c,table=table)
+    poplist=[] # the ones we really want
+    for i,c in enumerate(cols):
+        if c=='kasta':
+            print 'skipping column %d'%i
+            poplist.append(i)
+            continue
+        createcolumnifnotexists(c,table=table)
 
-        poplist=N.array(poplist)-N.arange(len(poplist))
-        for p in poplist:
-            cols.pop(p)
+    poplist=N.array(poplist)-N.arange(len(poplist))
+    for p in poplist:
+        cols.pop(p)
 
-        for line in file:
-            line=map(string.strip,line.split(DELIM))
-            for p in poplist: line.pop(p)
-            if newobject(cols,line,cursor): insert(cols,line,cursor)
-            else: update(cols,line,cursor)
+    for line in file:
+        line=map(string.strip,line.split(DELIM))
+        for p in poplist: line.pop(p)
+        if newobject(cols,line,cursor): insert(cols,line,cursor)
+        else: update(cols,line,cursor)
 
-        file.close()
+    file.close()
 
 def getspecfilename(mjd,plate,fiberID,addBase=True):
     if addBase: b = SPECBASE
@@ -258,21 +257,7 @@ def usage_example():
 
 def main():
 
-    if sys.argv[1].endswith('.db'):
-        connection,cursor=setupdb(sys.argv[1])
-        readfiles(sys.argv[2:],cursor)
-    else:
-        connection,cursor=setupdb()
-        readfiles(sys.argv[1:],cursor)
-
-    connection.commit()
-    #createviews(cursor)
-    #connection.commit()
-    cursor.close()
-    connection.close()
-
-    #usage_example()
-
+    print 'no main(). this is a library.'
 
 if __name__=='__main__':
     main()
