@@ -11,9 +11,10 @@ os.system('./csv2db.py spectradata3.csv')
 os.system('./csv2db.py photdata.csv')
 os.system('./csv2db.py primtarget.csv')
 os.system('./csv2db.py raddata.csv')
-os.system('./csv2db.py sbresult None')
+os.system('./csv2db.py bestfit_sb None sbfit')
+os.system('./csv2db.py pbfit1/bestfit2 None pbfit')
 # old data
-#os.system('./csv2db.py mix100901 None')
+#os.system('./csv2db.py sbresult None')
 
 
 conn,curs=DB.setupdb()
@@ -35,6 +36,9 @@ S.fillMtot(curs)
 S.fillBpara2(curs)
 S.fillDynMasses(curs)
 S.fillBpara3(curs)
+
+S.fillMass(curs,'pbfit','ML_tot') # postbursts as well
+S.fillMtot(curs,'pbfit')
 
 conn.commit()
 conn.close()

@@ -147,27 +147,27 @@ class inspectage(inspect):
 
 
 def plot1(cursor):
-    dage,dew,dmf,dM=gettable(cursor,cols='age,Ha_w,mf,Mr',where='agn=0 AND Mr>-20 and mf NOTNULL',table='sb')
-    gage,gew,gmf,gM=gettable(cursor,cols='age,Ha_w,mf,Mr',where='agn=0 AND Mr<-20 and mf NOTNULL',table='sb')
+    dage,dew,dmf,dM=gettable(cursor,cols='age,Ha_w,Massfrac,Mr',where='agn=0 AND Mr>-20 and Massfrac NOTNULL',table='sball')
+    gage,gew,gmf,gM=gettable(cursor,cols='age,Ha_w,Massfrac,Mr',where='agn=0 AND Mr<-20 and Massfrac NOTNULL',table='sball')
     limit1x,limit1y=P.loadtxt('/home/tom/projekte/sdss/ages/mixred0',unpack=True)[:2]
     limit2x,limit2y=P.loadtxt('/home/tom/projekte/sdss/ages/mixblue0',unpack=True)[:2]
 
-    P.subplot(1,2,1)
+    ax1=P.subplot(1,2,1)
     P.title(r'Dwarfs, $M_r > -20$')
     P.loglog(limit1x,limit1y,'--r',linewidth=2)
     P.loglog(limit2x,limit2y,'-r',linewidth=2)
-    P.scatter(dage,dew,c=dM,s=dmf*2000,label='Age, M>-20',alpha=0.2)
+    P.scatter(dage,dew,c=dmf,vmin=0,vmax=0.05,label='Age, M>-20',alpha=0.1)
     P.xlabel(r'Burst age')
     P.ylabel(r'EW(H$\alpha$)')
-    P.axis([1.8E6,2E10,55,2E3])
+    P.axis([4E6,2E9,55,9E2])
 
     P.subplot(1,2,2)
     P.title(r'Giants, $M_r < -20$')
     P.loglog(limit1x,limit1y,'--r',linewidth=2)
     P.loglog(limit2x,limit2y,'-r',linewidth=2)
-    P.scatter(gage,gew,c=gM,s=gmf*2000,label='Age, M<-20',alpha=0.2)
+    P.scatter(gage,gew,c=gmf,vmin=0,vmax=0.05,label='Age, M<-20',alpha=0.1)
     P.xlabel(r'Burst age')
-    P.axis([1.8E6,2E10,55,2E3])
+    P.axis([4E6,2E9,55,9E2])
     P.setp(P.gca(),'yticklabels',[])
     P.subplots_adjust(wspace=0)
 
@@ -195,7 +195,7 @@ def plot3(curs):
     y=sdss.lumfu(X,M,D)
     P.semilogy(X,y,'b--*',label=r'$\mathrm{b} > 3$')
 
-    M,D=getsb(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND mf > 0.025')
+    M,D=getsb(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND Massfrac> 0.025')
     y=sdss.lumfu(X,M,D)
     P.semilogy(X,y,'b^:',label=r'mass fraction $> 2.5 \%$')
 
@@ -203,7 +203,7 @@ def plot3(curs):
     y=sdss.lumfu(X,M,D)
     P.semilogy(X,y,'r-D',label=r'$\mathrm{W(H\delta)} < -6 \mathrm{\AA}$')
 
-    M,D=getsb(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL AND agn=1')
+    M,D=gettable(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL AND agn=1',table='sb')
     y=sdss.lumfu(X,M,D)
     y=masked_where(X>=-18,y)
     P.semilogy(X,y,'g-o',label='AGN')
@@ -227,16 +227,15 @@ def plot4(curs):
     P.title(r'Mass comparisons (starbursts only)')
 
 def plot5(curs):
-    mtot,bpara,bpara2,age=gettable(curs,cols='mtot,bpara,bpara2,age',where='mtot NOTNULL AND agn=0 AND bpara NOTNULL',table='sb')
+    mtot,bpara,bpara2,age=gettable(curs,cols='mtot,b_para,bpara2,age',where='mtot NOTNULL AND agn=0 AND b_para NOTNULL',table='sball')
     b,label=bpara,r'$<b>$'
     mtot=N.log10(mtot)
-    X=N.arange(8,12,0.2,dtype='f')
+    X=N.arange(8,11.4,0.2,dtype='f')
     mean=sdss.averbins(X,mtot,b,median=True)
-    P.scatter(mtot,b,s=age/1E8,alpha=0.4)
+    P.plot(mtot,b,'.b',alpha=0.2)
     P.plot(X[1:-1],mean[1:-1],'r-o')
-    P.xlabel(r'$\log_{10}(m_{tot})')
+    P.xlabel(r'$\log_{10}(m_{tot})$')
     P.ylabel(label)
-    P.legend(('median','symbol size: age'))
     P.axis([7.9537021982310101, 11.904518405306973, -0.45166015625, 12.17041015625])
 
 def plot6(curs):
@@ -353,8 +352,9 @@ def plot12(curs):
     P.legend(loc='upper right')
 
 def plot13(curs):
-    b,Ha_w,Ha_w_fit=gettable(curs,cols='bpara2,Ha_w,Ha_w_fit',where='Ha_w > 120 and age < 1.1E9',table='sb')
-    P.plot(Ha_w_fit,b,'r.',label=r'$\mathrm{EW}(H\alpha)_{fit}$', alpha=0.5)
+    b,Ha_w,Ha_w_fit,age=gettable(curs,cols='bpara2,Ha_w,Ha_w_fit,age',where='Ha_w > 120',table='sb')
+    P.plot(Ha_w_fit,N.ma.masked_where(age < 2E8,b),'r.',label=r'$\mathrm{age} > $', alpha=0.5)
+    P.plot(Ha_w_fit,N.ma.masked_where(age > 2E8,b),'b.',label=r'$\mathrm{age} < $', alpha=0.5)
     #P.plot(Ha_w,b,'b.',label=r'$\mathrm{EW}(H\alpha)$', alpha=0.5)
     P.xlabel(r'$\mathrm{EW}(H\alpha)$')
     P.ylabel(r'$b$')
@@ -378,8 +378,8 @@ def plot15(curs):
     md=(md1+md2)/2.0
     P.loglog(mp,md,'.r')
     P.grid()
-    P.xlabel(r'$M_{phot}')
-    P.ylabel(r'$M_{dyn}')
+    P.xlabel(r'$M_{phot}$')
+    P.ylabel(r'$M_{dyn}$')
 
 def plot16(curs):
     b1,b2=gettable(curs,cols='bpara2,bpara3',where='agn=0',table='sb')
@@ -387,8 +387,8 @@ def plot16(curs):
     b1,b2=gettable(curs,cols='bpara2,bpara3',where='agn=0',table='pb')
     P.plot(b1,b2,'.r')
     P.grid()
-    P.xlabel(r'$b_{phot}')
-    P.ylabel(r'$b_{dyn}')
+    P.xlabel(r'$b_{phot}$')
+    P.ylabel(r'$b_{dyn}$')
     P.axis([-0.1,5,-0.1,5])
 
 def plot17(curs):

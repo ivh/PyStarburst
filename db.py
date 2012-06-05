@@ -113,17 +113,13 @@ def setupdb(dbname=DBNAME):
 
     return connection,cursor
 
-def delviews(cursor):
-    cursor.execute('DROP VIEW sb')
-    cursor.execute('DROP VIEW pb')
-    cursor.execute('DROP VIEW clean')
-    printcomm()
-
 def createviews(cursor):
     cursor.execute('CREATE VIEW clean AS SELECT * from sdss WHERE zconf>0.95 AND ((flags & 8)==0) AND (primtarget & 64 > 0)')
     #cursor.execute('CREATE VIEW clean AS SELECT * from sdss WHERE zconf>0.95')
     cursor.execute('CREATE VIEW sb AS SELECT * from clean WHERE Ha_w > 60.0 AND Ha_s>1')
     cursor.execute('CREATE VIEW pb AS SELECT * from clean WHERE Hd_w < -6.0')
+    cursor.execute('create view sball as select * from sdss inner join sbfit on sbfit.ID=sdss.specObjID;')
+    cursor.execute('create view pball as select * from sdss inner join pbfit on pbfit.ID=sdss.specObjID;')
     printcomm()
 
 def readfiles(fnames,cursor,table='sdss',delim=DELIM):
@@ -201,10 +197,10 @@ def gettable(cursor,cols,where=None,table='sdss'):
     return get(cursor,'SELECT %s FROM %s%s'%(cols,table,where))
 
 def getsb(cursor,cols,where=None):
-    return gettable(cursor,cols,where=where,table='sb')
+    return gettable(cursor,cols,where=where,table='sball')
 
 def getpb(cursor,cols,where=None):
-    return gettable(cursor,cols,where=where,table='pb')
+    return gettable(cursor,cols,where=where,table='pball')
 
 def getspZline(cursor,wantedlines=[11,12,15,24],wantedprops=N.arange(7,15)):
     for l in wantedlines:
