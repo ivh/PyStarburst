@@ -181,9 +181,9 @@ def sfr(Ha_h,Ha_s,z,ec=0,corrFac=1):
 
 def fillSFR(curs):
     createcolumnifnotexists(curs,'sfr',table='sbfit')
-    data=curs.execute('select f.ID,f.Haflux_cf,s.z,s.Ha_h,s.Ha_s from sdss s, sbfit f where s.specObjID=f.ID and s.Ha_h >0 AND s.Ha_s>1 AND f.Haflux_cf NOTNULL').fetchall()
-    for id,corrFac,z,Ha_h,Ha_s in data:
-        curs.execute("UPDATE sbfit SET sfr=%f WHERE ID=%s"%(sfr(Ha_h,Ha_s,z,corrFac=corrFac),id))
+    data=curs.execute('select f.ID,f.log_Haflux,s.z,s.Ha_h,s.Ha_s from sdss s, sbfit f where s.specObjID=f.ID and s.Ha_h >0 AND s.Ha_s>1 AND f.log_Haflux NOTNULL').fetchall()
+    for id,Ha_lum,z,Ha_h,Ha_s in data:
+        curs.execute("UPDATE sbfit SET sfr=%f WHERE ID=%s"%(10**Ha_lum / 1.51e34,id))
 
 def mgas(Mg):
     return 10**(-0.3536*Mg+2.6374) + 10**(-0.45*Mg+0.35)
