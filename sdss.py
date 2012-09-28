@@ -202,24 +202,25 @@ def fillMtot(curs,table='sbfit'):
 
 def fillBpara2(curs):
     createcolumnifnotexists(curs,'bpara2',table='sbfit')
-    ids,mtot,sfr=gettable(curs,cols='ID,mtot,sfr',where='mtot NOTNULL AND sfr NOTNULL',table='sbfit')
+    ids,mass,sfr=gettable(curs,cols='ID,mass,sfr',where='mass NOTNULL AND sfr NOTNULL',table='sbfit')
     for i,id in enumerate(ids):
-        curs.execute("UPDATE sbfit SET bpara2=%f WHERE ID=%s"%(sfr[i]/(mtot[i]/1E10),id))
+        curs.execute("UPDATE sbfit SET bpara2=%f WHERE ID=%s"%(sfr[i]/(mass[i]/1E10),id))
 
 def lumfu(X,M,voldens):
-    y=N.zeros_like(X)
+    y=N.zeros(len(X),dtype='Float64')
     for i,x in enumerate(X):
         y[i] = N.sum(N.where(M<x,voldens,0.0))
     y[1:] = y[1:] - y[:-1]
     return y
 
-def averbins(X,orgX,Y,median=False):
-    mean=N.zeros_like(X)
+def averbins(X,orgX,Y,median=True):
+    mean=N.zeros(len(X),dtype='Float64')
     #median=mean.copy()
     #sigma=mean.copy()
-    for i,x in enumerate(X[:-1]):
+    for i,x in enumerate(X):
         tmp=masked_where(orgX<x,Y)
-        tmp=masked_where(orgX>=X[i+1],tmp)
+        if i<len(X)-1: tmp=masked_where(orgX>=X[i+1],tmp)
+        print i,x,tmp
         if median: mean[i]=N.ma.median(tmp)
         else: mean[i]=tmp.mean()
         #median[i]=N.median(tmp)
