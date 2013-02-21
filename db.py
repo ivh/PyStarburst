@@ -114,12 +114,12 @@ def setupdb(dbname=DBNAME):
     return connection,cursor
 
 def createviews(cursor):
-    cursor.execute('CREATE VIEW clean AS SELECT * from sdss WHERE zconf>0.95 AND ((flags & 8)==0) AND (primtarget & 64 > 0)')
+    cursor.execute('CREATE VIEW clean AS SELECT * from sdss WHERE zconf>0.95 AND ((flags & 8)==0) AND (primtarget & 64 > 0) AND z > 0.05')
     #cursor.execute('CREATE VIEW clean AS SELECT * from sdss WHERE zconf>0.95')
     cursor.execute('CREATE VIEW sb AS SELECT * from clean WHERE Ha_w > 60.0 AND Ha_s>1')
     cursor.execute('CREATE VIEW pb AS SELECT * from clean WHERE Hd_w < -6.0')
-    cursor.execute('create view sball as select * from sdss inner join sbfit on sbfit.ID=sdss.specObjID;')
-    cursor.execute('create view pball as select * from sdss inner join pbfit on pbfit.ID=sdss.specObjID;')
+    cursor.execute('create view sball as select * from clean inner join sbfit on sbfit.ID=clean.specObjID;')
+    cursor.execute('create view pball as select * from clean inner join pbfit on pbfit.ID=clean.specObjID;')
     printcomm()
 
 def readfile(fname,cursor,table='sdss',delim=DELIM,cnames=None,ctypes=None):

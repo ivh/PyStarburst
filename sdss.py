@@ -71,6 +71,9 @@ def absmag(m,z):
 def stasinska(x):
     return (-30.787 + (1.1358 * x) + (0.27297 * (x**2))) * N.tanh(5.7409 * x) - 31.093
 
+def kauffman(x):
+    return 0.61/(x-0.05)+1.3
+
 def lee(x):
     return 0.61/(x-0.25)+1.25
 

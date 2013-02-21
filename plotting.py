@@ -147,8 +147,8 @@ class inspectage(inspect):
 
 
 def plot1(cursor):
-    dage,dew,dmf,dM=gettable(cursor,cols='age,Ha_w,Massfrac,Mr',where='agn=0 AND Mr>-20 and Massfrac NOTNULL',table='sball')
-    gage,gew,gmf,gM=gettable(cursor,cols='age,Ha_w,Massfrac,Mr',where='agn=0 AND Mr<-20 and Massfrac NOTNULL',table='sball')
+    dage,dew,dmf,dM,dcorr=gettable(cursor,cols='age,Ha_w,Massfrac,Mr,EWHa_cf',where='agn=0 AND Mr>-20 and Massfrac NOTNULL',table='sball')
+    gage,gew,gmf,gM,gcorr=gettable(cursor,cols='age,Ha_w,Massfrac,Mr,EWHa_cf',where='agn=0 AND Mr<-20 and Massfrac NOTNULL',table='sball')
     limit1x,limit1y=P.loadtxt('/home/tom/projekte/sdss/ages/mixred0',unpack=True)[:2]
     limit2x,limit2y=P.loadtxt('/home/tom/projekte/sdss/ages/mixblue0',unpack=True)[:2]
 
@@ -156,18 +156,18 @@ def plot1(cursor):
     P.title(r'Dwarfs, $M_r > -20$')
     P.loglog(limit1x,limit1y,'--r',linewidth=2)
     P.loglog(limit2x,limit2y,'-r',linewidth=2)
-    P.scatter(dage,dew,c=dmf,vmin=0,vmax=0.05,label='Age, M>-20',alpha=0.1)
+    P.scatter(dage,dew*dcorr,c=dmf,vmin=0,vmax=0.05,label='Age, M>-20',alpha=0.15)
     P.xlabel(r'Burst age')
     P.ylabel(r'EW(H$\alpha$)')
-    P.axis([4E6,2E9,55,9E2])
+    P.axis([3E6,2E9,55,2E3])
 
     P.subplot(1,2,2)
     P.title(r'Giants, $M_r < -20$')
     P.loglog(limit1x,limit1y,'--r',linewidth=2)
     P.loglog(limit2x,limit2y,'-r',linewidth=2)
-    P.scatter(gage,gew,c=gmf,vmin=0,vmax=0.05,label='Age, M<-20',alpha=0.1)
+    P.scatter(gage,gew*gcorr,c=gmf,vmin=0,vmax=0.05,label='Age, M<-20',alpha=0.15)
     P.xlabel(r'Burst age')
-    P.axis([4E6,2E9,55,9E2])
+    P.axis([3E6,2E9,55,2E3])
     P.setp(P.gca(),'yticklabels',[])
     P.subplots_adjust(wspace=0)
 
@@ -175,9 +175,12 @@ def plot2(cursor):
     ax,ay=gettable(cursor,cols='NII_h/Ha_h,O5008_h/Hb_h',where='agn=1',table='sb')
     nx,ny=gettable(cursor,cols='NII_h/Ha_h,O5008_h/Hb_h',where='agn=0',table='sb')
     P.loglog(ax,ay,',g',ms=5)
-    P.loglog(nx,ny,'Db',ms=5,alpha=0.5)
+    P.loglog(nx,ny,',g',ms=5)
     x=N.arange(0.001,0.7,0.01)
-    P.plot(x,10**sdss.mylee(N.log10(x)),'r-',linewidth=2)
+    P.plot(x,10**sdss.mylee(N.log10(x)),'b-',linewidth=2)
+    P.plot(x,10**sdss.kauffman(N.log10(x)),'y-',linewidth=2)
+    P.plot(x,10**sdss.stasinska(N.log9(x)),'b-',linewidth=2)
+    P.plot(x,10**sdss.lee(N.log10(x)),'r-',linewidth=2)
     P.xlabel(r'$[N\, II]\, /\, H\alpha$')
     P.ylabel(r'$[O\, III]\, / H\beta$')
     #P.legend((s,m,b),(r'$\sigma(H\alpha)\, <\, 250\, km\,s^{-1}$',r'$250\, km\,s^{-1} <\, \sigma(H\alpha)\, <\, 700\, km\,s^{-1}$',r'$\sigma(H\alpha)\, >\, 700\, km\,s^{-1}$'),loc='lower left')
@@ -229,8 +232,9 @@ def plot4(curs):
 def plot5(curs):
     mtot,bpara,bpara2,age=gettable(curs,cols='mtot,b_para,bpara2,age',where='mtot NOTNULL AND agn=0 AND b_para NOTNULL',table='sball')
     b,label=bpara,r'$<b>$'
+    b,label=bpara2,r'$b$'
     mtot=N.log10(mtot)
-    X=N.arange(8,11.4,0.2,dtype='f')
+    X=N.arange(8.4,11.4,0.2,dtype='f')
     mean=sdss.averbins(X,mtot,b,median=True)
     P.plot(mtot,b,'.b',alpha=0.2)
     P.plot(X[1:-1],mean[1:-1],'r-o')
