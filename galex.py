@@ -32,9 +32,9 @@ def micJy2SolarLum(mJy,z,lambd=1530):
     solarLum=3.846E26 #Watt
     return micJy2Watt(mJy,z,lambd)/solarLum
 
-def uext2fuv(uext):
+def uext2fuv(uext,flux=1.0):
     """ gives the factor to multiply the fuv-flux with, dependign on u-band extiction in magnitudes"""
-    return 10**(1.66*uext/2.5)
+    return flux*10**(1.66*uext/2.5)
 
 def uext2nuv(uext):
     """ gives the factor to multiply the fuv-flux with, dependign on u-band extiction in magnitudes"""
@@ -48,16 +48,22 @@ def uext2nuv(uext):
 def fill_ext(curs):
     createcolumnifnotexists(curs,'fuv_corr','REAL','galex')
     query=curs.execute("SELECT g.sid,g.gid,s.extinction_u,g.fuv_flux FROM sdss s, galex g WHERE g.sid=s.ObjID")
-    for sid,gid,ext,fuv in query.fetchall():
-        que="UPDATE galex SET fuv_corr=%f WHERE gid=%d"%(fuv*uext2fuv(ext),gid)
-        curs.execute(que)
+    sid,gid,ext,fuv = zip(*query.fetchall())
+    fc = uext2fuv(N.array(ext),N.array(fuv))
+    curs.executemany("UPDATE galex SET fuv_corr=? WHERE gid=?", zip(*(fc,gid)))
+    #for sid,gid,ext,fuv in query.fetchall():
+    #    que="UPDATE galex SET fuv_corr=%f WHERE gid=%d"%(fuv*uext2fuv(ext),gid)
+    #    curs.execute(que)
 
 def fill_fuv_lum(curs):
     createcolumnifnotexists(curs,'fuv_lum','REAL','galex')
     query=curs.execute("SELECT g.sid,g.gid,s.extinction_u,g.fuv_corr,s.z FROM sdss s, galex g WHERE g.sid=s.ObjID")
-    for sid,gid,ext,fuv,z in query.fetchall():
-        que="UPDATE galex SET fuv_lum=%f WHERE gid=%d"%(micJy2SolarLum(fuv,z),gid)
-        curs.execute(que)
+    sid,gid,ext,fuv,z = zip(*query.fetchall())
+    lum=micJy2SolarLum(N.array(fuv),N.array(z))
+    curs.executemany("UPDATE galex SET fuv_lum=? WHERE gid=?",zip(*(lum,gid)))
+    #for sid,gid,ext,fuv,z in query.fetchall():
+    #    que="UPDATE galex SET fuv_lum=%f WHERE gid=%d"%(micJy2SolarLum(fuv,z),gid)
+    #    curs.execute(que)
 
 def fill_fuv_int(curs):
     createcolumnifnotexists(curs,'fuv_int','REAL','galex')
@@ -120,23 +126,29 @@ def makedb(dbname=DBNAME,sdss='sdss.csv',sints=2,galex='galex.csv',gints=3):
     fill_from_csv(curs,sdss,'sdss',nint=sints)
     fill_from_csv(curs,galex,'galex',nint=gints)
 
+    curs.execute('delete from sdss where extinction_u IS NULL;')
     curs.execute('delete from galex where specid not in (select specobjid from sdss);')
     conn.commit()
 
     # do the work
-    fill_agn(curs)
-    fill_beta(curs)
+    curs.execute('BEGIN TRANSACTION;')
     fill_ext(curs)
     fill_fuv_lum(curs)
+    curs.execute('delete from galex where fuv_lum ISNULL;')
+    curs.execute('delete from galex where fuv_lum<1E10 and specid in (select specObjID from sdss where z < 0.05)')
+    curs.execute('delete from sdss where z < 0.05 and specObjID in (select specid from galex where fuv_lum<1E10)')
+    conn.commit()
     fill_fuv_int(curs)
+    fill_agn(curs)
+    fill_beta(curs)
 
     curs.execute('vacuum;')
     conn.commit()
     return conn
 
-def dump_selection(curs,outfile='selection.html',where=''):
+def selection2html(curs,outfile='sel2013.html',where=''):
     urlbase='http://cas.sdss.org/dr7/en/tools/explore/obj.asp?id='
-    wanted='s.ObjID, s.z, g.fuv_lum, g.fuv_int, g.beta, s.Ha_w, s.Ha_s, s.Ha_h,s.Hb_h, Hd_w, s.OIII_h,s.NII_h'
+    wanted='s.ObjID, s.ra, s.dec, s.z, g.fuv_lum, g.fuv_int, s.extinction_u, g.beta, s.Ha_w, s.Ha_s, s.Ha_h,s.Hb_h, Hd_w, s.OIII_h,s.NII_h'
     wanto=wanted.replace('s.','').replace('g.','')
     wants=wanto.split(',')
     f=open(outfile,'w')
@@ -145,7 +157,7 @@ def dump_selection(curs,outfile='selection.html',where=''):
     if where !='': where='AND %s'%where
     curs.execute('SELECT DISTINCT %s FROM sdss s, galex g WHERE g.sid=s.ObjID %s ORDER BY s.z'%(wanted,where))
     data=curs.fetchall()
-    for sid,z,fuv_lum,fuv_int,beta,Ha_w,Ha_s,Ha_h,Hb_h,Hd_w,OIII_h,NII_h in data:
+    for sid,ra,dec,z,fuv_lum,fuv_int,A_u,beta,Ha_w,Ha_s,Ha_h,Hb_h,Hd_w,OIII_h,NII_h in data:
         f.write('<tr>')
         f.write('<td><a href="%s">%s</a></td>'%(urlbase+str(sid),str(sid)))
         f.write('<td>%.3f</td><td>%.3f</td><td>%.3f</td>'%(z,N.log10(fuv_lum),N.log10(fuv_int)))
