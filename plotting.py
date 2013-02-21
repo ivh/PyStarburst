@@ -12,7 +12,7 @@ from numpy.ma import masked_where
 
 from db import *
 import sdss
-#from PyGalKin.tool import smooth_gauss
+from PyGalKin.tool import smooth_gauss
 from matplotlib.transforms import blended_transform_factory
 
 def plotspecwhere(cursor,where,table='sdss'):
@@ -147,28 +147,26 @@ class inspectage(inspect):
 
 
 def plot1(cursor):
-    dage,dew,dmf,dM,dcf=gettable(cursor,cols='Age,Ha_w,Massfrac,Mr,Ha_cf',where='agn=0 AND Mr>-20 and Massfrac NOTNULL',table='sball')
-    gage,gew,gmf,gM,gcf=gettable(cursor,cols='Age,Ha_w,Massfrac,Mr,Ha_cf',where='agn=0 AND Mr<-20 and Massfrac NOTNULL',table='sball')
+    dage,dew,dmf,dM=gettable(cursor,cols='age,Ha_w,Massfrac,Mr',where='agn=0 AND Mr>-20 and Massfrac NOTNULL',table='sball')
+    gage,gew,gmf,gM=gettable(cursor,cols='age,Ha_w,Massfrac,Mr',where='agn=0 AND Mr<-20 and Massfrac NOTNULL',table='sball')
     limit1x,limit1y=P.loadtxt('/home/tom/projekte/sdss/ages/mixred0',unpack=True)[:2]
     limit2x,limit2y=P.loadtxt('/home/tom/projekte/sdss/ages/mixblue0',unpack=True)[:2]
 
     ax1=P.subplot(1,2,1)
-    P.title(r'$\mathrm{Dwarfs,}\,\, M_r > -20$')
-    P.loglog(limit1x,limit1y,'--k',linewidth=2)
-    P.loglog(limit2x,limit2y,'-k',linewidth=2)
-    P.scatter(dage,dew*dcf,c=dmf,vmin=0,vmax=0.05,label='Age, M>-20',alpha=0.2,cmap=P.cm.OrRd,lw=2)
-    P.xlabel(r'$\mathrm{Burst\, age}$')
-    P.ylabel(r'$\mathrm{EW}(H\alpha)$')
-    P.plot([1E6,1E10],[150,150],'k-.',lw=2)
+    P.title(r'Dwarfs, $M_r > -20$')
+    P.loglog(limit1x,limit1y,'--r',linewidth=2)
+    P.loglog(limit2x,limit2y,'-r',linewidth=2)
+    P.scatter(dage,dew,c=dmf,vmin=0,vmax=0.05,label='Age, M>-20',alpha=0.1)
+    P.xlabel(r'Burst age')
+    P.ylabel(r'EW(H$\alpha$)')
     P.axis([4E6,2E9,55,9E2])
 
     P.subplot(1,2,2)
-    P.title(r'$M_r < -20$')
-    P.loglog(limit1x,limit1y,'--k',linewidth=2)
-    P.loglog(limit2x,limit2y,'-k',linewidth=2)
-    P.scatter(gage,gew*gcf,c=gmf,vmin=0,vmax=0.05,label='Age, M<-20',alpha=0.2,cmap=P.cm.OrRd,lw=2)
-    P.xlabel(r'$\mathrm{Burst\, age}$')
-    P.plot([1E6,1E10],[150,150],'k-.',lw=2)
+    P.title(r'Giants, $M_r < -20$')
+    P.loglog(limit1x,limit1y,'--r',linewidth=2)
+    P.loglog(limit2x,limit2y,'-r',linewidth=2)
+    P.scatter(gage,gew,c=gmf,vmin=0,vmax=0.05,label='Age, M<-20',alpha=0.1)
+    P.xlabel(r'Burst age')
     P.axis([4E6,2E9,55,9E2])
     P.setp(P.gca(),'yticklabels',[])
     P.subplots_adjust(wspace=0)
@@ -189,7 +187,7 @@ def plot3(curs):
     P.semilogy(X,sdss.schechterBlanton(X),'k-',label='total (Blanton et al. (2001))')
     X=N.arange(-23,-15.5,1/3.0,dtype='f')
 
-    M,D=getsb(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND EWHamod > 100')
+    M,D=getsb(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND Ha_w > 100')
     y=sdss.lumfu(X,M,D)
     P.semilogy(X[2:],y[2:],'b-.s',label=r'$\mathrm{W(H\alpha)} > 100 \mathrm{\AA}$')
 
@@ -197,11 +195,11 @@ def plot3(curs):
     y=sdss.lumfu(X,M,D)
     P.semilogy(X,y,'b--*',label=r'$\mathrm{b} > 3$')
 
-    M,D=getsb(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND Massfrac> 0.03')
+    M,D=getsb(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND Massfrac> 0.025')
     y=sdss.lumfu(X,M,D)
-    P.semilogy(X,y,'b^:',label=r'mass fraction $> 3 \%$')
+    P.semilogy(X,y,'b^:',label=r'mass fraction $> 2.5 \%$')
 
-    M,D=getpb(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL and EW_Hd < -6')
+    M,D=getpb(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL')
     y=sdss.lumfu(X,M,D)
     P.semilogy(X,y,'r-D',label=r'$\mathrm{W(H\delta)} < -6 \mathrm{\AA}$')
 
@@ -210,8 +208,6 @@ def plot3(curs):
     y=masked_where(X>=-18,y)
     P.semilogy(X,y,'g-o',label='AGN')
 
-    P.plot([-17,-17],[1E-9,1E-3],'k--',lw=2)
-
     P.xlabel(r'$M_r$')
     P.ylabel(r'$\Phi\quad [\mathrm{Mpc}^{-3}\, \mathrm{mag}^{-1}]$')
     P.rcParams.update({'legend.fontsize':10})
@@ -219,7 +215,7 @@ def plot3(curs):
     P.axis([-24.2,-15.5,4E-10,2E-2])
 
 def plot4(curs):
-    M,mgas,mstar,mtot,msph,mdisk=gettable(curs,cols='Mr,mgas,mass,mtot,dynMassDisk,dynMassSphere',where='mtot NOTNULL ',table='sball')
+    M,mgas,mstar,mtot,msph,mdisk=gettable(curs,cols='Mr,mgas,mass,mtot,dynMassDisk,dynMassSphere',where='mtot NOTNULL ',table='sb')
     P.semilogy(M,msph,'yo',label='dyn. mass (sphere)')
     P.semilogy(M,mdisk,'ko',label='dyn. mass (disk)')
     P.semilogy(M,mstar,'ro',label='mass in stars')
@@ -231,68 +227,19 @@ def plot4(curs):
     P.title(r'Mass comparisons (starbursts only)')
 
 def plot5(curs):
-    #P.subplot(211)
-    mtot,bpara,bpara2,age=gettable(curs,cols='mtot,b_para,bpara2,age',where='mtot NOTNULL AND agn=0 AND bpara2 > 3',table='sball')
+    mtot,bpara,bpara2,age=gettable(curs,cols='mtot,b_para,bpara2,age',where='mtot NOTNULL AND agn=0 AND b_para NOTNULL',table='sball')
     b,label=bpara,r'$<b>$'
-    b,label=bpara2,r'$b$'
     mtot=N.log10(mtot)
     X=N.arange(8,11.4,0.2,dtype='f')
     mean=sdss.averbins(X,mtot,b,median=True)
-    #P.plot(mtot,b,'.b',alpha=0.3)
-    b=masked_where(b>14,b) # mask for plotting
-    P.hexbin(mtot,b,cmap=P.cm.bone_r,gridsize=(30,20))
-    P.plot(X[3:-1]+0.1,mean[3:-1],'r-o')
-    P.ylabel(label)
-    #P.xticks(P.xticks()[0],[])
-    P.text(8.7,10,r'$\mathrm{starbursts}\, b>3$')
+    P.plot(mtot,b,'.b',alpha=0.2)
+    P.plot(X[1:-1],mean[1:-1],'r-o')
     P.xlabel(r'$\log_{10}(m_{tot})$')
-    P.axis((8.5,11.2,2.5,7.9))
-
-    #P.subplot(212)
-    #P.subplots_adjust(hspace=0)
-    #mtot,b_para,age=gettable(curs,cols='mtot,b_param,age',where='mtot NOTNULL AND agn=0 AND b_param > 3',table='pball')
-    #mtot=N.log10(mtot)
-    #mean=sdss.averbins(X,mtot,b_para,median=True)
-    #P.plot(X[5:-1]+0.1,mean[5:-1],'r-o')
-    #b_para=masked_where(b_para>14,b_para)
-    #P.hexbin(mtot,b_para,gridsize=(30,16),cmap=P.cm.bone_r)
-    #P.ylabel(label)
-    #P.text(8.7,10,r'$\mathrm{postbursts}$')
-
-    #P.axis((8.5,11.2,2.5,11.9))
-
-def plot5a(curs):
-    P.subplot(211)
-    mtot,mf,age=gettable(curs,cols='mtot,Massfrac,age',where='bpara2 > 0.03 and mtot NOTNULL and Massfrac NOTNULL',table='sball')
-    mtot=N.log10(mtot)
-    label=r'$\mathrm{mass\,\, fraction}$'
-    X=N.arange(8,11.4,0.2,dtype='f')
-    mean=sdss.averbins(X,mtot,mf,median=True)
-    #P.plot(mtot,b,'.b',alpha=0.3)
-    mf=masked_where((mf<0) | (mf >.2),mf) # mask for plotting
-    P.hexbin(mtot,mf,cmap=P.cm.bone_r,gridsize=(50,20))
-    P.plot(X[3:-1]+0.1,mean[3:-1],'r-o')
     P.ylabel(label)
-    P.xticks(P.xticks()[0],[])
-    P.text(0.1,0.8,r'$\mathrm{starbursts},\,\, b>3$',transform=P.gca().transAxes)
-    P.axis((8.5,11.2,0,0.15))
-
-    P.subplot(212)
-    P.subplots_adjust(hspace=0)
-    mtot,mf,age=gettable(curs,cols='mtot,Massfrac,age',where='mtot NOTNULL AND b_param > .03',table='pball')
-    mtot=N.log10(mtot)
-    mean=sdss.averbins(X,mtot,mf,median=True)
-    mf=masked_where((mf<0) | (mf >.2),mf) # mask for plotting
-    P.plot(X[4:-1]+0.1,mean[4:-1],'r-o')
-    P.hexbin(mtot,mf,gridsize=(50,20),cmap=P.cm.bone_r)
-    P.ylabel(label)
-    P.text(0.1,0.8,r'$\mathrm{postbursts},\,\, b>3$',transform=P.gca().transAxes)
-    P.xlabel(r'$\log_{10}(m_{tot})$')
-
-    P.axis((8.5,11.2,0,0.15))
+    P.axis([7.9537021982310101, 11.904518405306973, -0.45166015625, 12.17041015625])
 
 def plot6(curs):
-    sbM,sbD,fade,age=gettable(curs,cols='Mr,voldens,fade,age',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND mf>0.025 AND age NOTNULL',table='sball')
+    sbM,sbD,fade,age=gettable(curs,cols='Mr,voldens,fade,age',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND mf>0.025 AND age NOTNULL',table='sb')
     pbM,pbD=gettable(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL',table='pb')
     sfM=N.array(sbM)+N.array(fade)
     fact=8E8/age
@@ -314,7 +261,7 @@ def plot6(curs):
     P.axis([-24.2,-15.5,4E-10,2E-2])
 
 def plot7(curs):
-    M,mgas,mstar,mtot,sfr,bpara2=gettable(curs,cols='Mr,mgas,mass,mtot,sfr,bpara2',where='mtot NOTNULL AND sfr NOTNULL and agn=0',table='sball')
+    M,mgas,mstar,mtot,sfr,bpara2=gettable(curs,cols='Mr,mgas,mass,mtot,sfr,bpara2',where='mtot NOTNULL AND sfr NOTNULL and agn=0',table='sb')
     P.loglog(mtot,mgas/sfr,'r.',label=r'$b<3$',alpha=0.3)
     mtot=masked_where(bpara2<3,mtot)
     P.loglog(mtot,mgas/sfr,'b.',label=r'$b>3$')
@@ -326,10 +273,10 @@ def plot7(curs):
 
 def plot8(curs):
     cols='mtot,age'
-    where='mtot NOTNULL AND Mr NOTNULL and b_para > 2.5'
-    mtot1,age1=gettable(curs,cols=cols,where=where+' AND bpara2>3',table='sball')
-    mtot2,age2=gettable(curs,cols=cols,where=where+' AND mf >0.025 AND bpara2>3',table='sball')
-    mtot3,age3=gettable(curs,cols=cols,where=where+' AND mf >0.025',table='sball')
+    where='mtot NOTNULL AND Mr NOTNULL and bpara > 2.5'
+    mtot1,age1=gettable(curs,cols=cols,where=where+' AND bpara2>3',table='sb')
+    mtot2,age2=gettable(curs,cols=cols,where=where+' AND mf >0.025 AND bpara2>3',table='sb')
+    mtot3,age3=gettable(curs,cols=cols,where=where+' AND mf >0.025',table='sb')
     P.subplot(131)
     P.ylabel(r'Age [yr]')
     P.title(r'$b > 3$')
