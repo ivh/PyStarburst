@@ -135,8 +135,9 @@ def makedb(dbname=DBNAME,sdss='sdss.csv',sints=2,galex='galex.csv',gints=3):
     fill_ext(curs)
     fill_fuv_lum(curs)
     curs.execute('delete from galex where fuv_lum ISNULL;')
-    curs.execute('delete from galex where fuv_lum<1E10 and specid in (select specObjID from sdss where z < 0.05)')
-    curs.execute('delete from sdss where z < 0.05 and specObjID in (select specid from galex where fuv_lum<1E10)')
+    curs.execute('delete from galex where fuv_s2n = -999.0;')
+    curs.execute('delete from galex where fuv_lum<1E10 and specid in (select specObjID from sdss where z > 0.05)')
+    curs.execute('delete from sdss where specObjID not in (select specid from galex )')
     conn.commit()
     fill_fuv_int(curs)
     fill_agn(curs)
@@ -148,8 +149,8 @@ def makedb(dbname=DBNAME,sdss='sdss.csv',sints=2,galex='galex.csv',gints=3):
 
 def selection2html(curs,outfile='sel2013.html',where=''):
     urlbase='http://cas.sdss.org/dr7/en/tools/explore/obj.asp?id='
-    wanted='s.ObjID, s.ra, s.dec, s.z, g.fuv_lum, g.fuv_int, s.extinction_u, g.beta, s.Ha_w, s.Ha_s, s.Ha_h,s.Hb_h, Hd_w, s.OIII_h,s.NII_h'
-    wanto=wanted.replace('s.','').replace('g.','')
+    wanted='s.ObjID, g.gid, s.ra, s.dec, s.z, g.fuv_lum, g.fuv_s2n,g.fuv_int, s.extinction_u, g.beta, s.agn, s.Ha_w, s.Ha_s, s.Ha_h,s.Hb_h, Hd_w, s.OIII_h,s.NII_h'
+    wanto=wanted.replace('s.','').replace('g.','').replace('extinction','A')
     wants=wanto.split(',')
     f=open(outfile,'w')
     f.write('<table border=1>\n')
@@ -157,15 +158,36 @@ def selection2html(curs,outfile='sel2013.html',where=''):
     if where !='': where='AND %s'%where
     curs.execute('SELECT DISTINCT %s FROM sdss s, galex g WHERE g.sid=s.ObjID %s ORDER BY s.z'%(wanted,where))
     data=curs.fetchall()
-    for sid,ra,dec,z,fuv_lum,fuv_int,A_u,beta,Ha_w,Ha_s,Ha_h,Hb_h,Hd_w,OIII_h,NII_h in data:
+    prevID=0
+    for sid,gid,ra,dec,z,fuv_lum,fuv_s2n,fuv_int,A_u,beta,agn,Ha_w,Ha_s,Ha_h,Hb_h,Hd_w,OIII_h,NII_h in data:
         f.write('<tr>')
-        f.write('<td><a href="%s">%s</a></td>'%(urlbase+str(sid),str(sid)))
-        f.write('<td>%.3f</td><td>%.3f</td><td>%.3f</td>'%(z,N.log10(fuv_lum),N.log10(fuv_int)))
-        f.write('<td>%.2f</td>'%(beta or N.nan))
+        if sid!=prevID: f.write('<td><a href="%s">%s</a></td>'%(urlbase+str(sid),str(sid)))
+        else: f.write('<td></td>')
+        f.write('<td>%s</td><td>%.3f</td><td>%.3f</td><td>%.3f</td>'%(gid,ra,dec,z))
+        f.write('<td>%.3f</td><td>%.1f</td><td>%.3f</td>'%(N.log10(fuv_lum),fuv_s2n,N.log10(fuv_int)))
+        f.write('<td>%.2f</td><td>%.2f</td><td>%s</td>'%(A_u,beta or N.nan,agn))
         f.write('<td>%.1f</td><td>%.1f</td><td>%.1f</td>'%(Ha_w,Ha_s,Ha_h))
         f.write('<td>%.1f</td><td>%.1f</td><td>%.1f</td><td>%.1f</td>'%(Hb_h,Hd_w,OIII_h,NII_h))
 
         f.write('</tr>\n')
+        prevID=sid
+    f.close()
+
+def selection2ascii(curs,outfile='sel2013.dat',where=''):
+    wanted='s.ObjID, g.gid, s.ra, s.dec, s.z, g.fuv_lum, g.fuv_s2n,g.fuv_int, s.extinction_u, g.beta, s.agn, s.Ha_w, s.Ha_s, s.Ha_h,s.Hb_h, Hd_w, s.OIII_h,s.NII_h'
+    wanto=wanted.replace('s.','').replace('g.','').replace('extinction','A')
+    f=open(outfile,'w')
+    f.write('# '+ wanto)
+    if where !='': where='AND %s'%where
+    curs.execute('SELECT DISTINCT %s FROM sdss s, galex g WHERE g.sid=s.ObjID %s ORDER BY s.z'%(wanted,where))
+    data=curs.fetchall()
+    for sid,gid,ra,dec,z,fuv_lum,fuv_s2n,fuv_int,A_u,beta,agn,Ha_w,Ha_s,Ha_h,Hb_h,Hd_w,OIII_h,NII_h in data:
+        f.write('%s, %s, '%(sid,sid))
+        f.write('%s, %.3f, %.3f, %.3f, '%(gid,ra,dec,z))
+        f.write('%.3f, %.1f, %.3f, '%(N.log10(fuv_lum),fuv_s2n,N.log10(fuv_int)))
+        f.write('%.2f, %.2f, %s, '%(A_u,beta or N.nan,agn))
+        f.write('%.1f, %.1f, %.1f, '%(Ha_w,Ha_s,Ha_h))
+        f.write('%.1f, %.1f, %.1f, %.1f\n'%(Hb_h,Hd_w,OIII_h,NII_h))
     f.close()
 
 
@@ -183,17 +205,6 @@ def plotAGN(curs):
     x,y=xyAGN(curs,where='agn=0')
     P.plot(x,y,'b,')
 
-    x,y=xyAGN(curs,where='sid in (SELECT sid from mccand)')
-    P.plot(x,y,'ob')
-    x,y=xyAGN(curs,where='sid in (SELECT sid from green)')
-    P.plot(x,y,'*g')
-    x,y=xyAGN(curs,where='sid in (SELECT sid from heck3)')
-    P.plot(x,y,'sr')
-    x,y=xyAGN(curs,where='sid in (SELECT sid from heck2)')
-    P.plot(x,y,'Dr')
-    x,y=xyAGN(curs,where='sid in (SELECT sid from heck1)')
-    P.plot(x,y,'*r')
-
     # plot the dividing line
     xl=P.arange(-1.7,-0.15,0.01)
     yl=sdss.mylee(xl)
@@ -202,24 +213,13 @@ def plotAGN(curs):
     P.ylabel('log [OIII]/Hb')
 
 def xyZFUV(curs,where):
-    return gettable(curs,'s.z,g.fuv_lum',table='sdss s, galex g',where='g.sid=s.sid AND g.fuv_corr NOT NULL AND s.z NOT NULL AND s.agn=0 AND %s'%where)
+    return gettable(curs,'s.z,g.fuv_lum',table='sdss s, galex g',where='g.sid=s.objID AND %s'%where)
+
 def plot_z_fuv(curs):
-    z,fuv=xyZFUV(curs,'g.compact=0')
-    P.semilogy(z,fuv,'b,')
-    z,fuv=xyZFUV(curs,'g.compact=1')
-    P.semilogy(z,fuv,'y,')
-    z,fuv=xyZFUV(curs,'g.compact=2')
-    P.semilogy(z,fuv,'r,')
-    z,fuv=xyZFUV(curs,'s.sid IN (SELECT sid from mccand)')
-    P.semilogy(z,fuv,'ob')
-    z,fuv=xyZFUV(curs,'s.sid IN (SELECT sid from green)')
-    P.semilogy(z,fuv,'*g')
-    z,fuv=xyZFUV(curs,'s.sid IN (SELECT sid from heck3)')
-    P.semilogy(z,fuv,'sr')
-    z,fuv=xyZFUV(curs,'s.sid IN (SELECT sid from heck2)')
-    P.semilogy(z,fuv,'Dr')
-    z,fuv=xyZFUV(curs,'s.sid IN (SELECT sid from heck1)')
-    P.semilogy(z,fuv,'*r')
+    z,fuv=xyZFUV(curs,'s.agn=0')
+    P.plot(z,N.log10(fuv),'k,')
+    #z,fuv=xyZFUV(curs,'g.compact=1')
+    #P.semilogy(z,fuv,'y,')
     P.xlabel('z')
     P.ylabel(r'L$_{FUV}$')
     #P.legend(loc='lower right')
@@ -227,15 +227,11 @@ def plot_z_fuv(curs):
 def plot_z_fuv_prop(curs):
     z,fuv=xyZFUV(curs,'s.agn=0')
     P.plot(z,N.log10(fuv),'k,',alpha=0.1)
-    z,fuv=xyZFUV(curs,'s.sid IN (SELECT sid from sel)')
-    P.plot(z,N.log10(fuv),'ob')
-    z,fuv=xyZFUV(curs,'s.sid IN (SELECT sid from sel) AND (s.sid IN (SELECT sid from heck3) OR s.sid IN (SELECT sid from heck2) OR s.sid IN (SELECT sid from heck1) OR s.sid IN (SELECT sid from green) OR s.sid IN (SELECT sid from mccand))')
-    P.plot(z,N.log10(fuv),'or')
     P.xlabel('$z$')
     P.ylabel(r'$\log(L_{FUV})$')
 
 def xyHaLum(curs,where):
-    return gettable(curs,'s.Ha_w,g.fuv_lum',table='sdss s, galex g',where='g.sid=s.sid AND g.fuv_corr NOT NULL AND s.z NOT NULL AND s.agn=0 AND %s'%where)
+    return gettable(curs,'s.Ha_w,g.fuv_lum',table='sdss s, galex g',where='g.sid=s.objID AND g.fuv_corr NOT NULL AND s.z NOT NULL AND s.agn=0 AND %s'%where)
 def plot_Ha_lum(curs):
     Ha,fuv=xyHaLum(curs,'g.compact=0')
     P.semilogy(Ha,fuv,'b,')
@@ -243,33 +239,13 @@ def plot_Ha_lum(curs):
     P.loglog(Ha,fuv,'y,')
     Ha,fuv=xyHaLum(curs,'g.compact=2')
     P.loglog(Ha,fuv,'r,')
-    Ha,fuv=xyHaLum(curs,'s.sid IN (SELECT sid from mccand)')
-    P.loglog(Ha,fuv,'bo')
-    Ha,fuv=xyHaLum(curs,'s.sid IN (SELECT sid from green)')
-    P.loglog(Ha,fuv,'*g')
-    Ha,fuv=xyHaLum(curs,'s.sid IN (SELECT sid from heck3)')
-    P.loglog(Ha,fuv,'sr')
-    Ha,fuv=xyHaLum(curs,'s.sid IN (SELECT sid from heck2)')
-    P.loglog(Ha,fuv,'Dr')
-    Ha,fuv=xyHaLum(curs,'s.sid IN (SELECT sid from heck1)')
-    P.loglog(Ha,fuv,'*r')
-    P.xlabel('Ha_W')
+    P.xlabel(r'$\mathrm{EW(H\alpha)}$')
     P.ylabel(r'L$_{FUV}$')
     P.legend(loc='lower right')
 
-def plot_LyHa_prop(curs):
-    Ha,fuv=xyHaLum(curs,'s.agn=0')
-    P.plot(N.log10(Ha),N.log10(fuv),',k',alpha=0.1)
-    Ha,fuv=xyHaLum(curs,'s.sid IN (SELECT sid from sel)')
-    P.plot(N.log10(Ha),N.log10(fuv),'bo')
-    Ha,fuv=xyHaLum(curs,'s.sid IN (SELECT sid from sel) AND (s.sid IN (SELECT sid from heck3) OR s.sid IN (SELECT sid from heck2) OR s.sid IN (SELECT sid from heck1) OR s.sid IN (SELECT sid from green) OR s.sid IN (SELECT sid from mccand))')
-    P.plot(N.log10(Ha),N.log10(fuv),'ro')
-    P.xlabel(r'$\log\,W(H_\alpha)$')
-#P.ylabel(r'$L_{FUV}$')
-
 
 def xyHaInt(curs,where):
-    return gettable(curs,'s.Ha_w,g.fuv_int',table='sdss s, galex g',where='g.sid=s.sid AND g.fuv_corr NOT NULL AND s.z NOT NULL AND s.agn=0 AND %s'%where)
+    return gettable(curs,'s.Ha_w,g.fuv_int',table='sdss s, galex g',where='g.sid=s.objID AND g.fuv_corr NOT NULL AND s.z NOT NULL AND s.agn=0 AND %s'%where)
 def plot_Ha_int(curs):
     Ha,fuv=xyHaInt(curs,'g.compact=0')
     P.loglog(Ha,fuv,'b,')
@@ -277,22 +253,12 @@ def plot_Ha_int(curs):
     P.loglog(Ha,fuv,'y,')
     Ha,fuv=xyHaInt(curs,'g.compact=2')
     P.loglog(Ha,fuv,'r,')
-    Ha,fuv=xyHaInt(curs,'s.sid IN (SELECT sid from mccand)')
-    P.loglog(Ha,fuv,'bo')
-    Ha,fuv=xyHaInt(curs,'s.sid IN (SELECT sid from green)')
-    P.loglog(Ha,fuv,'*g')
-    Ha,fuv=xyHaInt(curs,'s.sid IN (SELECT sid from heck3)')
-    P.loglog(Ha,fuv,'sr')
-    Ha,fuv=xyHaInt(curs,'s.sid IN (SELECT sid from heck2)')
-    P.loglog(Ha,fuv,'Dr')
-    Ha,fuv=xyHaInt(curs,'s.sid IN (SELECT sid from heck1)')
-    P.loglog(Ha,fuv,'*r')
-    P.xlabel(r'W(H$_\alpha$)')
+    P.xlabel(r'$\mathrm{EW(H\alpha)}$')
     P.ylabel(r'I$_{FUV}$')
     P.legend(loc='lower right')
 
 def xyHaBeta(curs,where):
-    return gettable(curs,'s.Ha_w,g.beta',table='sdss s, galex g',where='g.sid=s.sid AND g.fuv_corr NOT NULL AND s.z NOT NULL AND s.agn=0 AND %s'%where)
+    return gettable(curs,'s.Ha_w,g.beta',table='sdss s, galex g',where='g.sid=s.objID AND g.fuv_corr NOT NULL AND s.z NOT NULL AND s.agn=0 AND %s'%where)
 def plot_Ha_beta(curs):
     Ha,beta=xyHaBeta(curs,'g.compact=0')
     P.semilogx(Ha,beta,'b,')
@@ -300,21 +266,11 @@ def plot_Ha_beta(curs):
     P.semilogx(Ha,beta,'y,')
     Ha,beta=xyHaBeta(curs,'g.compact=2')
     P.semilogx(Ha,beta,'r,')
-    Ha,beta=xyHaBeta(curs,'s.sid IN (SELECT sid from mccand)')
-    P.semilogx(Ha,beta,'bo')
-    Ha,beta=xyHaBeta(curs,'s.sid IN (SELECT sid from green)')
-    P.semilogx(Ha,beta,'*g')
-    Ha,beta=xyHaBeta(curs,'s.sid IN (SELECT sid from heck3)')
-    P.semilogx(Ha,beta,'sr')
-    Ha,beta=xyHaBeta(curs,'s.sid IN (SELECT sid from heck2)')
-    P.semilogx(Ha,beta,'Dr')
-    Ha,beta=xyHaBeta(curs,'s.sid IN (SELECT sid from heck1)')
-    P.semilogx(Ha,beta,'*r')
-    P.xlabel('Ha_W')
-    P.ylabel('beta')
+    P.xlabel(r'$\mathrm{EW(H\alpha)}$')
+    P.ylabel(r'$\beta$')
 
 def xylumBeta(curs,where):
-    return gettable(curs,'g.fuv_lum,g.beta',table='sdss s, galex g',where='g.sid=s.sid AND g.fuv_corr NOT NULL AND s.z NOT NULL AND s.agn=0 AND %s'%where)
+    return gettable(curs,'g.fuv_lum,g.beta',table='sdss s, galex g',where='g.sid=s.objID AND g.fuv_corr NOT NULL AND s.z NOT NULL AND s.agn=0 AND %s'%where)
 def plot_lum_beta(curs):
     lum,beta=xylumBeta(curs,'g.compact=0')
     P.semilogx(lum,beta,'b,')
@@ -322,18 +278,8 @@ def plot_lum_beta(curs):
     P.semilogx(lum,beta,'y,')
     lum,beta=xylumBeta(curs,'g.compact=2')
     P.semilogx(lum,beta,'r,')
-    lum,beta=xylumBeta(curs,'s.sid IN (SELECT sid from mccand)')
-    P.semilogx(lum,beta,'bo')
-    lum,beta=xylumBeta(curs,'s.sid IN (SELECT sid from green)')
-    P.semilogx(lum,beta,'*g')
-    lum,beta=xylumBeta(curs,'s.sid IN (SELECT sid from heck3)')
-    P.semilogx(lum,beta,'sr')
-    lum,beta=xylumBeta(curs,'s.sid IN (SELECT sid from heck2)')
-    P.semilogx(lum,beta,'Dr')
-    lum,beta=xylumBeta(curs,'s.sid IN (SELECT sid from heck1)')
-    P.semilogx(lum,beta,'*r')
     P.xlabel(r'L$_{FUV}$')
-    P.ylabel('beta')
+    P.ylabel(r'$\beta$')
 
 def plotprop(curs):
     P.figure(figsize=(10,4))
@@ -361,6 +307,7 @@ def plotall(curs):
     P.subplot(236)
     plot_lum_beta(curs)
 
+    P.subplots_adjust(0.07,.11,.98,.98,.27,.24)
 
 
 def detcolor(curs,sid):
@@ -375,15 +322,15 @@ def detcolor(curs,sid):
 
 
 
-def getselimages(curs):
+def getselimages(curs,table='sel'):
     url='http://casjobs.sdss.org/ImgCutoutDR7/getjpeg.aspx?ra=%s&dec=%s&scale=0.19806&width=256&height=256'
 
     from urllib import urlopen as get
-    curs.execute('SELECT sid,ra,dec from sdss WHERE sid IN (SELECT sid FROM sel)')
+    curs.execute('SELECT objID,ra,dec from %s'%table)
     data=curs.fetchall()
     for sid,ra,dec in data:
         im=get(url%(ra,dec))
-        f=open('%s.jpg'%str(sid),'w')
+        f=open('obj_%s.jpg'%str(sid),'w')
         f.write(im.read())
         f.close()
         im.close()
