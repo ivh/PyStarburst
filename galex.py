@@ -16,7 +16,8 @@ from sdss import *
 
 import Image
 import os
-from urllib import urlopen as get
+from urllib import urlopen
+from lxml import etree
 
 DBNAME='lars2.sqlite'
 
@@ -125,6 +126,20 @@ def fill_from_csv(curs, filename, tablename, nint=2):
     for line in f:
         curs.execute('INSERT INTO %s VALUES (%s)'%(tablename,','.join(['?']*len(cols))), line.split(','))
 
+def fill_sdss_name(curs,table='sel'):
+    createcolumnifnotexists(curs,'name','TEXT',table=table)
+    urlbase='http://cas.sdss.org/dr7/en/tools/explore/summary.asp?spec=&id='
+    for sid,z in curs.execute('select objID,z from %s'%table).fetchall():
+        url=urlbase+hex(int(sid))
+        u = urlopen(url)
+        h=etree.parse(u,parser=etree.HTMLParser())
+        for i in h.iter():
+            if i.tag=='h2':
+                for j in i.getchildren():
+                    if j.text: name=j.text.split()[-1]
+        curs.execute('update %s SET name="%s" where objID=%s'%(table,name,sid))
+
+
 def makedb(dbname=DBNAME,sdss='sdss.csv',sints=2,galex='galex.csv',gints=3):
     conn,curs=setupdb(dbname)
     fill_from_csv(curs,sdss,'sdss',nint=sints)
@@ -151,31 +166,36 @@ def makedb(dbname=DBNAME,sdss='sdss.csv',sints=2,galex='galex.csv',gints=3):
     conn.commit()
     return conn
 
-def selection2html(curs,outfile='sel2013.html',where=''):
+def selection2html(curs,outfile='sel2013.html',where='',table='sel'):
     urlbase='http://cas.sdss.org/dr7/en/tools/explore/obj.asp?id='
-    wanted='s.ObjID, g.gid, s.ra, s.dec, s.z, g.fuv_lum, g.fuv_s2n,g.fuv_int, s.extinction_u, g.beta, s.agn, s.Ha_w, s.Ha_s, s.Ha_h,s.Hb_h, Hd_w, s.OIII_h,s.NII_h,mag_r'
-    wanto=wanted.replace('s.','').replace('g.','').replace('extinction','A')
+    wanted='name,objID, gid, ra, dec, z, fuv_lum, fuv_s2n,fuv_int, extinction_u, beta, agn, Ha_w, Ha_s, Ha_h,Hb_h, Hd_w, OIII_h,NII_h,mag_g,mag_r'
+    wanto=wanted.replace('extinction','A')
     wants=wanto.split(',')
     f=open(outfile,'w')
-    f.write('<table border=1>\n')
-    for w in wants: f.write('<td>%s</td>'%w)
-    if where !='': where='AND %s'%where
-    curs.execute('SELECT DISTINCT %s FROM sdss s, galex g WHERE g.sid=s.ObjID %s ORDER BY s.z'%(wanted,where))
+    f.write('<table border=1><tr><th>#</th>\n')
+    for w in wants: f.write('<th>%s</th>'%w)
+    f.write('<th>M_g</th><th>M_r</th>')
+    f.write('</tr>\n')
+    if where: where='AND %s'%where
+    curs.execute('SELECT DISTINCT %s FROM %s %s ORDER BY fuv_lum desc'%(wanted,table,where))
     data=curs.fetchall()
-    prevID=0
-    for sid,gid,ra,dec,z,fuv_lum,fuv_s2n,fuv_int,A_u,beta,agn,Ha_w,Ha_s,Ha_h,Hb_h,Hd_w,OIII_h,NII_h,mag_r in data:
-        f.write('<tr>')
+    prevID,counter=0,1
+    for name,sid,gid,ra,dec,z,fuv_lum,fuv_s2n,fuv_int,A_u,beta,agn,Ha_w,Ha_s,Ha_h,Hb_h,Hd_w,OIII_h,NII_h,mag_g,mag_r in data:
+        f.write('<tr><td>%s</td><td>%s</td>'%(counter,name))
         if sid!=prevID: f.write('<td><a href="%s">%s</a></td>'%(urlbase+str(sid),str(sid)))
         else: f.write('<td></td>')
-        f.write('<td>%s</td><td>%.3f</td><td>%.3f</td><td>%.3f</td>'%(gid,ra,dec,z))
+        f.write('<td>%s</td><td>%.5f</td><td>%.5f</td><td>%.4f</td>'%(gid,ra,dec,z))
         f.write('<td>%.3f</td><td>%.1f</td><td>%.3f</td>'%(N.log10(fuv_lum),fuv_s2n,N.log10(fuv_int)))
         f.write('<td>%.2f</td><td>%.2f</td><td>%s</td>'%(A_u,beta or N.nan,agn))
         f.write('<td>%.1f</td><td>%.1f</td><td>%.1f</td>'%(Ha_w,Ha_s,Ha_h))
         f.write('<td>%.1f</td><td>%.1f</td><td>%.1f</td><td>%.1f</td>'%(Hb_h,Hd_w,OIII_h,NII_h))
+        f.write('<td>%.1f</td><td>%.1f</td>'%(mag_g,mag_r))
         f.write('<td>%.1f</td>'%(absmag(mag_r,z)))
+        f.write('<td>%.1f</td>'%(absmag(mag_g,z)))
 
         f.write('</tr>\n')
         prevID=sid
+        counter+=1
     f.close()
 
 def selection2ascii(curs,outfile='sel2013.dat',where=''):
@@ -324,7 +344,7 @@ def getselimages(curs,table='sel'):
         fname='obj_%s.jpg'%str(sid)
         if os.path.exists(fname):
             continue
-        im=get(url%(ra,dec))
+        im=urlopen(url%(ra,dec))
         f=open(fname,'w')
         f.write(im.read())
         f.close()
