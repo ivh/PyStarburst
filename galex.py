@@ -18,8 +18,27 @@ import Image
 import os
 from urllib import urlopen
 from lxml import etree
-
+from decimal import Decimal
 DBNAME='lars2.sqlite'
+
+def deg2hms(deg):
+    x = deg / 360.0 * 24.0
+    h = int( x //1 )
+    x = (x%1) * 60
+    m = int( x //1 )
+    s = (x%1) * 60
+    return '%02d %02d %05.2f'%(h,m,s)
+
+def deg2dms(deg):
+    if deg < 0: f = -1
+    else: f = 1
+    deg *= f
+    d = int(deg //1)
+    deg = (deg%1)*60
+    m = int(deg//1)
+    s = (deg%1)*60
+    return '%02d %02d %05.2f'%(f*d,m,s)
+
 
 def micJy2Watt(mJy,z,lambd):
     lambd*=1E-10
@@ -139,6 +158,19 @@ def fill_sdss_name(curs,table='sel'):
                     if j.text: name=j.text.split()[-1]
         curs.execute('update %s SET name="%s" where objID=%s'%(table,name,sid))
 
+def cleanGalex_s2n(curs,table='sel'):
+    seen=set()
+    keep=set()
+    for sid,gid,s2n in curs.execute('select sid,gid,fuv_s2n from %s order by fuv_s2n desc'%table).fetchall():
+
+        if str(sid) in seen: continue
+        else:
+            seen.add(str(sid))
+            keep.add(str(gid))
+    print len(keep)
+    keep=','.join(keep)
+    print keep
+    curs.execute('delete from %s where gid not in (%s)'%(table,keep))
 
 def makedb(dbname=DBNAME,sdss='sdss.csv',sints=2,galex='galex.csv',gints=3):
     conn,curs=setupdb(dbname)
@@ -166,6 +198,20 @@ def makedb(dbname=DBNAME,sdss='sdss.csv',sints=2,galex='galex.csv',gints=3):
     conn.commit()
     return conn
 
+def selection2latex(curs,outfile='sel2013.tex',table='sel'):
+    wanted='name,ra, dec, mag_r'
+    wanto=wanted.replace('extinction','A')
+    wants=wanto.split(',')
+    f=open(outfile,'w')
+    curs.execute('SELECT DISTINCT %s FROM %s ORDER BY fuv_lum'%(wanted,table))
+    data=curs.fetchall()
+    for name,ra, dec, mag_r in data:
+        f.write('\Target{A}{%s}'%(name,))
+        ra=deg2hms(ra)
+        dec=deg2dms(dec)
+        f.write('{%s}{%s}{1}{%s}{}{}{}\n'%(ra,dec,'%.1f'%mag_r))
+    f.close()
+
 def selection2html(curs,outfile='sel2013.html',where='',table='sel'):
     urlbase='http://cas.sdss.org/dr7/en/tools/explore/obj.asp?id='
     wanted='name,objID, gid, ra, dec, z, fuv_lum, fuv_s2n,fuv_int, extinction_u, beta, agn, Ha_w, Ha_s, Ha_h,Hb_h, Hd_w, OIII_h,NII_h,mag_g,mag_r'
@@ -178,6 +224,7 @@ def selection2html(curs,outfile='sel2013.html',where='',table='sel'):
     f.write('</tr>\n')
     if where: where='AND %s'%where
     curs.execute('SELECT DISTINCT %s FROM %s %s ORDER BY fuv_lum desc'%(wanted,table,where))
+    #curs.execute('SELECT DISTINCT %s FROM %s %s ORDER BY objID'%(wanted,table,where))
     data=curs.fetchall()
     prevID,counter=0,1
     for name,sid,gid,ra,dec,z,fuv_lum,fuv_s2n,fuv_int,A_u,beta,agn,Ha_w,Ha_s,Ha_h,Hb_h,Hd_w,OIII_h,NII_h,mag_g,mag_r in data:
@@ -382,13 +429,14 @@ def fooplot(curs,ax1=None,ax2=None):
     ax2.set_xticks([1.8,2.0,2.2,2.4])
 
 def plotselimages(curs):
-    P.figure(figsize=(8.66,7.5))
+    #P.figure(figsize=(8.66,7.5))
     P.subplots_adjust(0.01,0.01,0.99,0.99,0.02,0.02)
     curs.execute('SELECT DISTINCT sid,z,Ha_w from sel ORDER BY fuv_lum desc')
     data=curs.fetchall()
     i=1
     for sid,z,ha in data:
-        ax=P.subplot(6,7,i,frameon=False)
+        print i,sid
+        ax=P.subplot(2,8,i,frameon=False)
         ax.set_axis_off()
         P.imshow(Image.open('obj_%s.jpg'%str(sid)),origin='lower')
         fuv=curs.execute('select max(fuv_lum) from sel where objID=%s'%sid).fetchone()
@@ -398,8 +446,7 @@ def plotselimages(curs):
         P.text(5,185,'$\log(L_{FUV}):\\, %.1f $'%N.log10(fuv),fontsize=11,color='w')
         i+=1
 
-    ax1=P.axes([0.18,0.01,0.40,0.3])
-    ax2=P.axes([0.58,0.01,0.40,0.3],sharey=ax1)
-
-    fooplot(curs,ax1,ax2)
+    #ax1=P.axes([0.18,0.01,0.40,0.3])
+    #ax2=P.axes([0.58,0.01,0.40,0.3],sharey=ax1)
+    #fooplot(curs,ax1,ax2)
 
