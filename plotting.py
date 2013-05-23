@@ -12,7 +12,7 @@ from numpy.ma import masked_where
 
 from db import *
 import sdss
-from PyGalKin.tool import smooth_gauss
+#from PyGalKin.tool import smooth_gauss
 from matplotlib.transforms import blended_transform_factory
 
 def plotspecwhere(cursor,where,table='sdss'):

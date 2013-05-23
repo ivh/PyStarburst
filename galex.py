@@ -14,7 +14,31 @@ from numpy.ma import masked_where
 from numpy import pi
 from sdss import *
 
+import Image
+import os
+from urllib import urlopen
+from lxml import etree
+from decimal import Decimal
 DBNAME='lars2.sqlite'
+
+def deg2hms(deg):
+    x = deg / 360.0 * 24.0
+    h = int( x //1 )
+    x = (x%1) * 60
+    m = int( x //1 )
+    s = (x%1) * 60
+    return '%02d %02d %05.2f'%(h,m,s)
+
+def deg2dms(deg):
+    if deg < 0: f = -1
+    else: f = 1
+    deg *= f
+    d = int(deg //1)
+    deg = (deg%1)*60
+    m = int(deg//1)
+    s = (deg%1)*60
+    return '%02d %02d %05.2f'%(f*d,m,s)
+
 
 def micJy2Watt(mJy,z,lambd):
     lambd*=1E-10
@@ -121,6 +145,33 @@ def fill_from_csv(curs, filename, tablename, nint=2):
     for line in f:
         curs.execute('INSERT INTO %s VALUES (%s)'%(tablename,','.join(['?']*len(cols))), line.split(','))
 
+def fill_sdss_name(curs,table='sel'):
+    createcolumnifnotexists(curs,'name','TEXT',table=table)
+    urlbase='http://cas.sdss.org/dr7/en/tools/explore/summary.asp?spec=&id='
+    for sid,z in curs.execute('select objID,z from %s'%table).fetchall():
+        url=urlbase+hex(int(sid))
+        u = urlopen(url)
+        h=etree.parse(u,parser=etree.HTMLParser())
+        for i in h.iter():
+            if i.tag=='h2':
+                for j in i.getchildren():
+                    if j.text: name=j.text.split()[-1]
+        curs.execute('update %s SET name="%s" where objID=%s'%(table,name,sid))
+
+def cleanGalex_s2n(curs,table='sel'):
+    seen=set()
+    keep=set()
+    for sid,gid,s2n in curs.execute('select sid,gid,fuv_s2n from %s order by fuv_s2n desc'%table).fetchall():
+
+        if str(sid) in seen: continue
+        else:
+            seen.add(str(sid))
+            keep.add(str(gid))
+    print len(keep)
+    keep=','.join(keep)
+    print keep
+    curs.execute('delete from %s where gid not in (%s)'%(table,keep))
+
 def makedb(dbname=DBNAME,sdss='sdss.csv',sints=2,galex='galex.csv',gints=3):
     conn,curs=setupdb(dbname)
     fill_from_csv(curs,sdss,'sdss',nint=sints)
@@ -147,30 +198,51 @@ def makedb(dbname=DBNAME,sdss='sdss.csv',sints=2,galex='galex.csv',gints=3):
     conn.commit()
     return conn
 
-def selection2html(curs,outfile='sel2013.html',where=''):
-    urlbase='http://cas.sdss.org/dr7/en/tools/explore/obj.asp?id='
-    wanted='s.ObjID, g.gid, s.ra, s.dec, s.z, g.fuv_lum, g.fuv_s2n,g.fuv_int, s.extinction_u, g.beta, s.agn, s.Ha_w, s.Ha_s, s.Ha_h,s.Hb_h, Hd_w, s.OIII_h,s.NII_h'
-    wanto=wanted.replace('s.','').replace('g.','').replace('extinction','A')
+def selection2latex(curs,outfile='sel2013.tex',table='sel'):
+    wanted='name,ra, dec, mag_r'
+    wanto=wanted.replace('extinction','A')
     wants=wanto.split(',')
     f=open(outfile,'w')
-    f.write('<table border=1>\n')
-    for w in wants: f.write('<td>%s</td>'%w)
-    if where !='': where='AND %s'%where
-    curs.execute('SELECT DISTINCT %s FROM sdss s, galex g WHERE g.sid=s.ObjID %s ORDER BY s.z'%(wanted,where))
+    curs.execute('SELECT DISTINCT %s FROM %s ORDER BY fuv_lum'%(wanted,table))
     data=curs.fetchall()
-    prevID=0
-    for sid,gid,ra,dec,z,fuv_lum,fuv_s2n,fuv_int,A_u,beta,agn,Ha_w,Ha_s,Ha_h,Hb_h,Hd_w,OIII_h,NII_h in data:
-        f.write('<tr>')
+    for name,ra, dec, mag_r in data:
+        f.write('\Target{A}{%s}'%(name,))
+        ra=deg2hms(ra)
+        dec=deg2dms(dec)
+        f.write('{%s}{%s}{1}{%s}{}{}{}\n'%(ra,dec,'%.1f'%mag_r))
+    f.close()
+
+def selection2html(curs,outfile='sel2013.html',where='',table='sel'):
+    urlbase='http://cas.sdss.org/dr7/en/tools/explore/obj.asp?id='
+    wanted='name,objID, gid, ra, dec, z, fuv_lum, fuv_s2n,fuv_int, extinction_u, beta, agn, Ha_w, Ha_s, Ha_h,Hb_h, Hd_w, OIII_h,NII_h,mag_g,mag_r'
+    wanto=wanted.replace('extinction','A')
+    wants=wanto.split(',')
+    f=open(outfile,'w')
+    f.write('<table border=1><tr><th>#</th>\n')
+    for w in wants: f.write('<th>%s</th>'%w)
+    f.write('<th>M_g</th><th>M_r</th>')
+    f.write('</tr>\n')
+    if where: where='AND %s'%where
+    curs.execute('SELECT DISTINCT %s FROM %s %s ORDER BY fuv_lum desc'%(wanted,table,where))
+    #curs.execute('SELECT DISTINCT %s FROM %s %s ORDER BY objID'%(wanted,table,where))
+    data=curs.fetchall()
+    prevID,counter=0,1
+    for name,sid,gid,ra,dec,z,fuv_lum,fuv_s2n,fuv_int,A_u,beta,agn,Ha_w,Ha_s,Ha_h,Hb_h,Hd_w,OIII_h,NII_h,mag_g,mag_r in data:
+        f.write('<tr><td>%s</td><td>%s</td>'%(counter,name))
         if sid!=prevID: f.write('<td><a href="%s">%s</a></td>'%(urlbase+str(sid),str(sid)))
         else: f.write('<td></td>')
-        f.write('<td>%s</td><td>%.3f</td><td>%.3f</td><td>%.3f</td>'%(gid,ra,dec,z))
+        f.write('<td>%s</td><td>%.5f</td><td>%.5f</td><td>%.4f</td>'%(gid,ra,dec,z))
         f.write('<td>%.3f</td><td>%.1f</td><td>%.3f</td>'%(N.log10(fuv_lum),fuv_s2n,N.log10(fuv_int)))
         f.write('<td>%.2f</td><td>%.2f</td><td>%s</td>'%(A_u,beta or N.nan,agn))
         f.write('<td>%.1f</td><td>%.1f</td><td>%.1f</td>'%(Ha_w,Ha_s,Ha_h))
         f.write('<td>%.1f</td><td>%.1f</td><td>%.1f</td><td>%.1f</td>'%(Hb_h,Hd_w,OIII_h,NII_h))
+        f.write('<td>%.1f</td><td>%.1f</td>'%(mag_g,mag_r))
+        f.write('<td>%.1f</td>'%(absmag(mag_r,z)))
+        f.write('<td>%.1f</td>'%(absmag(mag_g,z)))
 
         f.write('</tr>\n')
         prevID=sid
+        counter+=1
     f.close()
 
 def selection2ascii(curs,outfile='sel2013.dat',where=''):
@@ -310,71 +382,71 @@ def plotall(curs):
     P.subplots_adjust(0.07,.11,.98,.98,.27,.24)
 
 
-def detcolor(curs,sid):
-    curs.execute('select sid from green where sid="%d"'%sid)
-    if curs.fetchone(): return '#48db00'
-    curs.execute('select sid from mccand where sid="%d"'%sid)
-    if curs.fetchone(): return 'r'
-    curs.execute('select sid from heck where sid="%d"'%sid)
-    if curs.fetchone(): return '#429fff'
-
-    return 'y'
-
-
-
 def getselimages(curs,table='sel'):
     url='http://casjobs.sdss.org/ImgCutoutDR7/getjpeg.aspx?ra=%s&dec=%s&scale=0.19806&width=256&height=256'
 
-    from urllib import urlopen as get
     curs.execute('SELECT objID,ra,dec from %s'%table)
     data=curs.fetchall()
     for sid,ra,dec in data:
-        im=get(url%(ra,dec))
-        f=open('obj_%s.jpg'%str(sid),'w')
+        fname='obj_%s.jpg'%str(sid)
+        if os.path.exists(fname):
+            continue
+        im=urlopen(url%(ra,dec))
+        f=open(fname,'w')
         f.write(im.read())
         f.close()
         im.close()
 
-def plotselimages(curs):
-    import Image
+def fooplot(curs,ax1=None,ax2=None):
+    #P.figure(figsize=(10,4.96))
+    if not ax1: ax1=P.axes([0.38,0.01,0.30,0.32])
+    if not ax2: ax2=P.axes([0.68,0.01,0.31,0.32],sharey=ax1)
     P.rc('xtick.major', pad=-12)
-    P.rc('xtick', labelsize=8)
-    P.figure(figsize=(10,4.96))
-    P.subplots_adjust(0.01,0.01,0.99,0.99,0.02,0.02)
+    P.rc('xtick', labelsize=10)
 
-    ax1=P.axes([0.38,0.01,0.30,0.32])
-    #plot_z_fuv_prop(curs)
-    ax2=P.axes([0.68,0.01,0.31,0.32],sharey=ax1)
-    #plot_LyHa_prop(curs)
+    curs.execute('SELECT DISTINCT sid,z,Ha_w from sel ORDER BY fuv_lum desc')
+    data=curs.fetchall()
+    for sid,z,ha in data:
+        fuv,beta=curs.execute('select max(fuv_lum),beta from sel where objID=%s'%sid).fetchone()
+
+        if ha < 70: color='g';marker='o'
+        elif ha > 70 and ha < 140: color='y';marker='s'
+        elif ha > 140: color='r';marker='D'
+        ax1.plot(-1*(beta or N.nan),N.log10(fuv),color=color,marker=marker)
+        ax2.plot(N.log10(ha),N.log10(fuv),color=color,marker=marker)
+
     P.setp(ax1.get_yticklabels(), visible=False)
-    P.setp(ax2.get_yticklabels(), fontsize=8)
-    ax1.set_yticks([9.5,10,10.5])
-    ax1.set_xticks([0.04,0.08,0.12,0.16])
-    ax2.set_xticks([2,2.4,2.8])
+    P.setp(ax2.get_yticklabels(), fontsize=10)
     ax1.xaxis.labelpad=-19
     ax2.xaxis.labelpad=-19
     ax2.set_xlabel(r'$\log\,W(H_\alpha)$')
     ax1.set_ylabel(r'$\log(L_{FUV})$')
-    ax1.set_xlabel(r'$z$')
+    ax1.set_xlabel(r'$\beta$')
+    ax1.axis([-0.4,-1.8,8.75,10.45])
+    ax2.axis([1.55,2.45,8.75,10.45])
+    ax1.set_yticks([8.8, 9.2, 9.6,10,10.4])
+    ax1.set_xticks([-0.5,-1.0,-1.5])
+    ax2.set_xticks([1.8,2.0,2.2,2.4])
 
-    curs.execute('SELECT DISTINCT sid,z,Ha_w from sdss WHERE (sid IN (SELECT sid FROM sel)) ORDER BY z')
+def plotselimages(curs):
+    #P.figure(figsize=(8.66,7.5))
+    P.subplots_adjust(0.01,0.01,0.99,0.99,0.02,0.02)
+    curs.execute('SELECT DISTINCT sid,z,Ha_w from sel ORDER BY fuv_lum desc')
     data=curs.fetchall()
     i=1
     for sid,z,ha in data:
-        ax=P.subplot(3,6,i,frameon=False)
+        print i,sid
+        ax=P.subplot(2,8,i,frameon=False)
         ax.set_axis_off()
-        P.imshow(Image.open('%s.jpg'%str(sid)),origin='lower')
-        color=detcolor(curs,sid)
-        P.text(6,3,'$\mathbf{%d}$'%i,fontsize=18,color=color)
-        P.text(165,7,'$z:\\, %.3f$'%z,fontsize=11,color='w')
-        P.text(5,215,'$W(H_\\alpha):\\, %d \\AA$'%ha,fontsize=11,color='w')
-        curs.execute('SELECT fuv_lum from galex WHERE sid=%s'%str(sid))
-        fuv=N.max(curs.fetchall())
+        P.imshow(Image.open('obj_%s.jpg'%str(sid)),origin='lower')
+        fuv=curs.execute('select max(fuv_lum) from sel where objID=%s'%sid).fetchone()
+        P.text(6,3,'$\mathbf{%d}$'%i,fontsize=18,color='w')
+        P.text(100,7,'$z:\\, %.3f$'%z,fontsize=11,color='w')
+        P.text(5,215,'$W(H\\alpha):\\, %d$'%ha,fontsize=11,color='w')
         P.text(5,185,'$\log(L_{FUV}):\\, %.1f $'%N.log10(fuv),fontsize=11,color='w')
-        ax1.plot(z,N.log10(fuv),color=color,marker='o')
-        ax2.plot(N.log10(ha),N.log10(fuv),color=color,marker='o')
         i+=1
 
-    ax1.axis([0.02,0.185,9.0,10.78])
-    ax2.axis([1.9,2.9,9.0,10.78])
+    #ax1=P.axes([0.18,0.01,0.40,0.3])
+    #ax2=P.axes([0.58,0.01,0.40,0.3],sharey=ax1)
+    #fooplot(curs,ax1,ax2)
 
