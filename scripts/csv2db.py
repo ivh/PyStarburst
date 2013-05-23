@@ -52,12 +52,23 @@ elif TABLE=='sdss':
 
 else: # we read into a new table
     print 'making new table %s'%TABLE
-    coldef = ' REAL, '.join(colist[1:])
+    firstline=f.readline()
+    coldef=' '
+    for i,val in enumerate(firstline.split()[1:]):
+        try:
+            float(val)
+            coldef+='%s REAL, '%colist[i+1]
+        except:
+            coldef+='%s TEXT, '%colist[i+1]
+
+    print colist,coldef
     curs.execute('CREATE TABLE IF NOT EXISTS %s (%s INTEGER PRIMARY KEY, %s)'%\
-        (TABLE,colist[0],coldef))
+        (TABLE,colist[0],coldef[:-2]))
 
     qmarks=('?,'*len(colist))[:-1]
     sql="insert into %s values (%s)"%(TABLE,qmarks)
+    values=map(strip,firstline.split(SEP))
+    curs.execute(sql,values)
     for line in f:
         values=map(strip,line.split(SEP))
         curs.execute(sql,values)
