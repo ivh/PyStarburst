@@ -121,15 +121,15 @@ def fill_beta(curs):
         #print fuv,nuv,type(beta)
         curs.execute("UPDATE galex SET beta=%f WHERE gid=%d"%(beta,id))
 
-def fill_agn(curs):
+def fill_agn(curs,table='sel'):
     createcolumnifnotexists(curs,'agn','INTEGER')
-    ids=gettable(curs,cols='objID',where='(Ha_h >0) AND (Hb_h>0) AND (OIII_h>0) AND (NII_h>0)',table='sdss')
-    x,y,sig=gettable(curs,cols='NII_h/Ha_h,OIII_h/Hb_h,Ha_s',where='(Ha_h >0) AND (Hb_h>0) AND (OIII_h>0) AND (NII_h>0)',table='sdss')
+    ids=gettable(curs,cols='objID',where='(Ha_h >0) AND (Hb_h>0) AND (OIII_h>0) AND (NII_h>0)',table=table)
+    x,y,sig=gettable(curs,cols='NII_h/Ha_h,OIII_h/Hb_h,Ha_s',where='(Ha_h >0) AND (Hb_h>0) AND (OIII_h>0) AND (NII_h>0)',table=table)
     x=N.log10(N.array(x))
     y=N.log10(N.array(y))
     agn=N.where( (y>mylee) | (sig > 5),1,0)
     for i,id in enumerate(ids):
-        curs.execute("UPDATE sdss SET agn=%s WHERE objID=%s"%(agn[i],id))
+        curs.execute("UPDATE %s SET agn=%s WHERE objID=%s"%(table,agn[i],id))
 
 def fill_from_csv(curs, filename, tablename, nint=2):
     """
@@ -145,10 +145,12 @@ def fill_from_csv(curs, filename, tablename, nint=2):
     for line in f:
         curs.execute('INSERT INTO %s VALUES (%s)'%(tablename,','.join(['?']*len(cols))), line.split(','))
 
-def fill_sdss_name(curs,table='sel'):
+def fill_sdss_name(curs,table='sel',lastSid=None):
     createcolumnifnotexists(curs,'name','TEXT',table=table)
     urlbase='http://cas.sdss.org/dr7/en/tools/explore/summary.asp?spec=&id='
-    for sid,z in curs.execute('select objID,z from %s'%table).fetchall():
+    for sid,z,name in curs.execute('select objID,z,name from %s order by objID'%table).fetchall():
+        if name: continue
+        if sid == lastSid: continue
         url=urlbase+hex(int(sid))
         u = urlopen(url)
         h=etree.parse(u,parser=etree.HTMLParser())
@@ -156,7 +158,9 @@ def fill_sdss_name(curs,table='sel'):
             if i.tag=='h2':
                 for j in i.getchildren():
                     if j.text: name=j.text.split()[-1]
+        print '%s -> %s'%(sid,name)
         curs.execute('update %s SET name="%s" where objID=%s'%(table,name,sid))
+        lastSid=sid
 
 def cleanGalex_s2n(curs,table='sel'):
     seen=set()
@@ -245,13 +249,13 @@ def selection2html(curs,outfile='sel2013.html',where='',table='sel'):
         counter+=1
     f.close()
 
-def selection2ascii(curs,outfile='sel2013.dat',where=''):
-    wanted='s.ObjID, g.gid, s.ra, s.dec, s.z, g.fuv_lum, g.fuv_s2n,g.fuv_int, s.extinction_u, g.beta, s.agn, s.Ha_w, s.Ha_s, s.Ha_h,s.Hb_h, Hd_w, s.OIII_h,s.NII_h'
-    wanto=wanted.replace('s.','').replace('g.','').replace('extinction','A')
+def selection2ascii(curs,outfile='sel2013.dat',where='',table='sel'):
+    wanted='ObjID, gid, ra, dec, z, fuv_lum, fuv_s2n,fuv_int, extinction_u, beta, agn, Ha_w, Ha_s, Ha_h,Hb_h, Hd_w, OIII_h,NII_h'
+    wanto=wanted.replace('extinction','A')
     f=open(outfile,'w')
     f.write('# '+ wanto)
     if where !='': where='AND %s'%where
-    curs.execute('SELECT DISTINCT %s FROM sdss s, galex g WHERE g.sid=s.ObjID %s ORDER BY s.z'%(wanted,where))
+    curs.execute('SELECT DISTINCT %s FROM %s WHERED %s ORDER BY fuv_lum'%(wanted,table,where))
     data=curs.fetchall()
     for sid,gid,ra,dec,z,fuv_lum,fuv_s2n,fuv_int,A_u,beta,agn,Ha_w,Ha_s,Ha_h,Hb_h,Hd_w,OIII_h,NII_h in data:
         f.write('%s, %s, '%(sid,sid))
@@ -266,23 +270,26 @@ def selection2ascii(curs,outfile='sel2013.dat',where=''):
 #
 # PLOTTING
 #
-def xyAGN(curs,where):
-    Ha_w,Ha_h,Ha_s,Hb_h,OIII_h,NII_h=gettable(curs,'Ha_w,Ha_h,Ha_s,Hb_h,OIII_h,NII_h',table='sdss',where=where)
+def xyAGN(curs,where='',table='sel'):
+    Ha_w,Ha_h,Ha_s,Hb_h,OIII_h,NII_h=gettable(curs,'Ha_w,Ha_h,Ha_s,Hb_h,OIII_h,NII_h',table=table,where=where)
     x=P.log10(NII_h/Ha_h)
     y=P.log10(OIII_h/Hb_h)
     return x,y
 def plotAGN(curs):
-    x,y=xyAGN(curs,where='agn=1')
-    P.plot(x,y,'r,')
-    x,y=xyAGN(curs,where='agn=0')
-    P.plot(x,y,'b,')
-
     # plot the dividing line
     xl=P.arange(-1.7,-0.15,0.01)
-    yl=sdss.mylee(xl)
-    P.plot(xl,yl,'r-',linewidth=2)
-    P.xlabel('log [NII]/Ha')
-    P.ylabel('log [OIII]/Hb')
+    yl=mylee(xl)
+    P.plot(xl,yl,'k-',linewidth=2)
+    P.xlabel(r'$\log\, [NII]/H\alpha$')
+    P.ylabel(r'$\log\, [OIII]/H\beta$')
+
+    x,y=xyAGN(curs,table='sdss')
+    P.plot(x,y,'y.',alpha=0.1,mew=0)
+
+    x,y=xyAGN(curs,table='sel')
+    y=masked_where(y>mylee(x),y)
+    P.plot(x,y,'Db')
+
 
 def xyZFUV(curs,where):
     return gettable(curs,'s.z,g.fuv_lum',table='sdss s, galex g',where='g.sid=s.objID AND %s'%where)
@@ -428,19 +435,25 @@ def fooplot(curs,ax1=None,ax2=None):
     ax1.set_xticks([-0.5,-1.0,-1.5])
     ax2.set_xticks([1.8,2.0,2.2,2.4])
 
-def plotselimages(curs):
+def plotselimages(curs,ncols=7,table='sel',marked='sel_submit'):
     #P.figure(figsize=(8.66,7.5))
     P.subplots_adjust(0.01,0.01,0.99,0.99,0.02,0.02)
-    curs.execute('SELECT DISTINCT sid,z,Ha_w from sel ORDER BY fuv_lum desc')
+    #oldsids=zip(*curs.execute('SELECT DISTINCT sid from %s ORDER BY fuv_lum desc'%marked).fetchall())[0]
+
+    curs.execute('SELECT DISTINCT sid,z,Ha_w from %s ORDER BY fuv_lum desc'%table)
     data=curs.fetchall()
+    nrows=N.ceil(len(data)/float(ncols))
     i=1
     for sid,z,ha in data:
         print i,sid
-        ax=P.subplot(2,8,i,frameon=False)
+        ax=P.subplot(nrows,ncols,i,frameon=False)
         ax.set_axis_off()
         P.imshow(Image.open('obj_%s.jpg'%str(sid)),origin='lower')
-        fuv=curs.execute('select max(fuv_lum) from sel where objID=%s'%sid).fetchone()
-        P.text(6,3,'$\mathbf{%d}$'%i,fontsize=18,color='w')
+        fuv=curs.execute('select max(fuv_lum) from %s where objID=%s'%(table,sid)).fetchone()
+        #if sid in oldsids: c='y'
+        #else: c='w'
+        c='w'
+        P.text(6,3,'$\mathbf{%d}$'%i,fontsize=18,color=c)
         P.text(100,7,'$z:\\, %.3f$'%z,fontsize=11,color='w')
         P.text(5,215,'$W(H\\alpha):\\, %d$'%ha,fontsize=11,color='w')
         P.text(5,185,'$\log(L_{FUV}):\\, %.1f $'%N.log10(fuv),fontsize=11,color='w')
