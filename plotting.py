@@ -174,8 +174,8 @@ def plot1(cursor):
     P.subplots_adjust(wspace=0)
 
 def plot2(cursor):
-    ax,ay=gettable(cursor,cols='NII_h/Ha_h,O5008_h/Hb_h',where='agn=1',table='sb')
-    nx,ny=gettable(cursor,cols='NII_h/Ha_h,O5008_h/Hb_h',where='agn=0',table='sb')
+    ax,ay=gettable(cursor,cols='NII_h/Ha_h,O5008_h/Hb_h',where='agn=1',table='sball')
+    nx,ny=gettable(cursor,cols='NII_h/Ha_h,O5008_h/Hb_h',where='agn=0',table='sball')
     P.loglog(ax,ay,',g',ms=5)
     P.loglog(nx,ny,'Db',ms=5,alpha=0.5)
     x=N.arange(0.001,0.7,0.01)
@@ -205,7 +205,7 @@ def plot3(curs):
     y=sdss.lumfu(X,M,D)
     P.semilogy(X,y,'r-D',label=r'$\mathrm{W(H\delta)} < -6 \mathrm{\AA}$')
 
-    M,D=gettable(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL AND agn=1',table='sb')
+    M,D=gettable(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL AND agn=1',table='sball')
     y=sdss.lumfu(X,M,D)
     y=masked_where(X>=-18,y)
     P.semilogy(X,y,'g-o',label='AGN')
@@ -217,7 +217,7 @@ def plot3(curs):
     P.axis([-24.2,-15.5,4E-10,2E-2])
 
 def plot4(curs):
-    M,mgas,mstar,mtot,msph,mdisk=gettable(curs,cols='Mr,mgas,mass,mtot,dynMassDisk,dynMassSphere',where='mtot NOTNULL ',table='sb')
+    M,mgas,mstar,mtot,msph,mdisk=gettable(curs,cols='Mr,mgas,mass,mtot,dynMassDisk,dynMassSphere',where='mtot NOTNULL ',table='sball')
     P.semilogy(M,msph,'yo',label='dyn. mass (sphere)')
     P.semilogy(M,mdisk,'ko',label='dyn. mass (disk)')
     P.semilogy(M,mstar,'ro',label='mass in stars')
@@ -241,8 +241,8 @@ def plot5(curs):
     P.axis([7.9537021982310101, 11.904518405306973, -0.45166015625, 12.17041015625])
 
 def plot6(curs):
-    sbM,sbD,fade,age=gettable(curs,cols='Mr,voldens,fade,age',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND mf>0.025 AND age NOTNULL',table='sb')
-    pbM,pbD=gettable(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL',table='pb')
+    sbM,sbD,fade,age=gettable(curs,cols='Mr,voldens,fade,age',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND mf>0.025 AND age NOTNULL',table='sball')
+    pbM,pbD=gettable(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL',table='pball')
     sfM=N.array(sbM)+N.array(fade)
     fact=8E8/age
     fusk=1
@@ -263,7 +263,7 @@ def plot6(curs):
     P.axis([-24.2,-15.5,4E-10,2E-2])
 
 def plot7(curs):
-    M,mgas,mstar,mtot,sfr,bpara2=gettable(curs,cols='Mr,mgas,mass,mtot,sfr,bpara2',where='mtot NOTNULL AND sfr NOTNULL and agn=0',table='sb')
+    M,mgas,mstar,mtot,sfr,bpara2=gettable(curs,cols='Mr,mgas,mass,mtot,sfr,bpara2',where='mtot NOTNULL AND sfr NOTNULL and agn=0',table='sball')
     P.loglog(mtot,mgas/sfr,'r.',label=r'$b<3$',alpha=0.3)
     mtot=masked_where(bpara2<3,mtot)
     P.loglog(mtot,mgas/sfr,'b.',label=r'$b>3$')
@@ -276,9 +276,9 @@ def plot7(curs):
 def plot8(curs):
     cols='mtot,age'
     where='mtot NOTNULL AND Mr NOTNULL and bpara > 2.5'
-    mtot1,age1=gettable(curs,cols=cols,where=where+' AND bpara2>3',table='sb')
-    mtot2,age2=gettable(curs,cols=cols,where=where+' AND mf >0.025 AND bpara2>3',table='sb')
-    mtot3,age3=gettable(curs,cols=cols,where=where+' AND mf >0.025',table='sb')
+    mtot1,age1=gettable(curs,cols=cols,where=where+' AND bpara2>3',table='sball')
+    mtot2,age2=gettable(curs,cols=cols,where=where+' AND mf >0.025 AND bpara2>3',table='sball')
+    mtot3,age3=gettable(curs,cols=cols,where=where+' AND mf >0.025',table='sball')
     P.subplot(131)
     P.ylabel(r'Age [yr]')
     P.title(r'$b > 3$')
@@ -302,9 +302,9 @@ def plot8(curs):
 
 def plot9(curs):
     ax1=P.subplot(1,2,1)
-    u,g,r = gettable(curs,cols='m_u,m_g,m_r',where='agn=1',table='sb')
+    u,g,r = gettable(curs,cols='m_u,m_g,m_r',where='agn=1',table='sball')
     P.plot(g-r,u-g,'.g',alpha=0.2,label='agn')
-    u,g,r = gettable(curs,cols='m_u,m_g,m_r',where='agn=0',table='sb')
+    u,g,r = gettable(curs,cols='m_u,m_g,m_r',where='agn=0',table='sball')
     P.plot(g-r,u-g,'.b',alpha=0.3,label='starbursts')
     P.axis([-1,2,-0.5,3])
     P.xlabel('g-r')
@@ -318,7 +318,7 @@ def plot9(curs):
 
 
 def plot10(curs):
-    Ha_h,Hb_h,z = gettable(curs,cols='Ha_h,Hb_h,z',where='Mr < -18 and Mr > -20',table='sb')
+    Ha_h,Hb_h,z = gettable(curs,cols='Ha_h,Hb_h,z',where='Mr < -18 and Mr > -20',table='sball')
 
     P.plot(z,Ha_h/Hb_h,'.b')
     P.grid()
@@ -329,7 +329,7 @@ def plot10(curs):
     P.ylabel('Ha/Hb')
 
 def plot11(curs):
-    age,mtot,mf,b=gettable(curs,cols='age,mtot,mf,bpara',where='bpara2 > 3',table='sb')
+    age,mtot,mf,b=gettable(curs,cols='age,mtot,mf,bpara',where='bpara2 > 3',table='sball')
     P.loglog(mtot,age,'Db',label=r'$b>3$')
     mtot=masked_where(mf<0.025,mtot)
     P.loglog(mtot,age,'Dg',label=r'$b>3, mf>2.5\%$')
@@ -340,7 +340,7 @@ def plot11(curs):
     P.legend(loc='lower right')
 
 def plot12(curs):
-    age,mtot,b=gettable(curs,cols='age,mtot,bpara',where='agn=0',table='sb')
+    age,mtot,b=gettable(curs,cols='age,mtot,bpara',where='agn=0',table='sball')
     b1=masked_where(age>=5E7,b)
     b2=masked_where(age<=5E7,b)
     b2=masked_where(age>=5E8,b2)
@@ -354,7 +354,7 @@ def plot12(curs):
     P.legend(loc='upper right')
 
 def plot13(curs):
-    b,Ha_w,Ha_w_fit,age=gettable(curs,cols='bpara2,Ha_w,Ha_w_fit,age',where='Ha_w > 120',table='sb')
+    b,Ha_w,Ha_w_fit,age=gettable(curs,cols='bpara2,Ha_w,Ha_w_fit,age',where='Ha_w > 120',table='sball')
     P.plot(Ha_w_fit,N.ma.masked_where(age < 2E8,b),'r.',label=r'$\mathrm{age} > $', alpha=0.5)
     P.plot(Ha_w_fit,N.ma.masked_where(age > 2E8,b),'b.',label=r'$\mathrm{age} < $', alpha=0.5)
     #P.plot(Ha_w,b,'b.',label=r'$\mathrm{EW}(H\alpha)$', alpha=0.5)
@@ -364,7 +364,7 @@ def plot13(curs):
     P.legend(loc='upper right')
 
 def plot14(curs):
-    dynMassDisk,dynMassSphere=gettable(curs,cols='dynMassDisk,dynMassSphere',where='agn=0',table='sb')
+    dynMassDisk,dynMassSphere=gettable(curs,cols='dynMassDisk,dynMassSphere',where='agn=0',table='sball')
     P.loglog(dynMassDisk,dynMassSphere,'.b', alpha=0.5, label='starbursts')
     dynMassDisk,dynMassSphere=gettable(curs,cols='dynMassDisk,dynMassSphere',where='agn=0',table='pb')
     P.loglog(dynMassDisk,dynMassSphere,'.r', alpha=0.5, label='postbursts')
@@ -373,7 +373,7 @@ def plot14(curs):
     P.ylabel(r'$M_{dyn,sphere}$')
 
 def plot15(curs):
-    mp,md1,md2=gettable(curs,cols='mtot,dynMassDisk,dynMassSphere',where='agn=0',table='sb')
+    mp,md1,md2=gettable(curs,cols='mtot,dynMassDisk,dynMassSphere',where='agn=0',table='sball')
     md=(md1+md2)/2.0
     P.loglog(mp,md,'.b',alpha=0.5)
     mp,md1,md2=gettable(curs,cols='mtot,dynMassDisk,dynMassSphere',where='agn=0',table='pb')
@@ -384,7 +384,7 @@ def plot15(curs):
     P.ylabel(r'$M_{dyn}$')
 
 def plot16(curs):
-    b1,b2=gettable(curs,cols='bpara2,bpara3',where='agn=0',table='sb')
+    b1,b2=gettable(curs,cols='bpara2,bpara3',where='agn=0',table='sball')
     P.plot(b1,b2,'.b',alpha=0.5)
     b1,b2=gettable(curs,cols='bpara2,bpara3',where='agn=0',table='pb')
     P.plot(b1,b2,'.r')
@@ -394,7 +394,7 @@ def plot16(curs):
     P.axis([-0.1,5,-0.1,5])
 
 def plot17(curs):
-    mp,md1,md2=gettable(curs,cols='mtot,dynMassDisk,dynMassSphere',where='agn=0 and mtot NOTNULL',table='sb')
+    mp,md1,md2=gettable(curs,cols='mtot,dynMassDisk,dynMassSphere',where='agn=0 and mtot NOTNULL',table='sball')
     md=(md1+md2)/2.0
     P.semilogx(mp,md/mp,'.b',alpha=0.5)
     mp,md1,md2=gettable(curs,cols='mtot,dynMassDisk,dynMassSphere',where='agn=0 and mtot NOTNULL',table='pb')
