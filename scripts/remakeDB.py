@@ -11,7 +11,7 @@ os.system('./csv2db.py spectradata3.csv')
 os.system('./csv2db.py photdata.csv')
 os.system('./csv2db.py primtarget.csv')
 os.system('./csv2db.py raddata.csv')
-os.system('./csv2db.py sb_bestfits_20130522 None sbfit')
+os.system('./csv2db.py sb_bestfits_20130617 None sbfit')
 os.system('./csv2db.py pbfit1/bestfit2 None pbfit')
 # old data
 #os.system('./csv2db.py sbresult None')
