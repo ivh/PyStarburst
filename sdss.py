@@ -230,8 +230,7 @@ def averbins(X,orgX,Y,median=True):
         #sigma[i]=tmp.std()
     return mean
 
-def corr_sigma_instr(sigma):
-    instrument_sigma=60
+def corr_sigma_instr(sigma,instrument_sigma=70):
     result = N.sqrt(sigma**2 - instrument_sigma**2)
     return N.where(N.isnan(result), 0.0, result)
 
