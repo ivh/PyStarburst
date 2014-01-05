@@ -205,7 +205,7 @@ def plot3(curs):
     y=sdss.lumfu(X,M,D)
     P.semilogy(X,y,'r-D',label=r'$\mathrm{W(H\delta)} < -6 \mathrm{\AA}$')
 
-    M,D=gettable(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL AND agn=1',table='sball')
+    M,D=gettable(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL AND agn=1',table='sb')
     y=sdss.lumfu(X,M,D)
     y=masked_where(X>=-18,y)
     P.semilogy(X,y,'g-o',label='AGN')
@@ -425,6 +425,38 @@ def plot18(curs):
         P.plot([7.0],[0.8],'k<', transform=trans)
         P.plot([8.0],[0.8],'ko', transform=trans)
         P.plot([8.65],[0.8],'k>', transform=trans)
+
+def plot19(curs):
+    X=N.arange(-24,-15.5,1/3.0,dtype='f')
+    Blanton=sdss.schechterBlanton(X)
+
+    M,D=getsb(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND Ha_w > 100')
+    y=sdss.lumfu(X,M,D)
+    P.semilogy(X,y/Blanton,'b-.s',label=r'$\mathrm{W(H\alpha)} > 100 \mathrm{\AA}$')
+
+    M,D=getsb(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND bpara2 >3')
+    y=sdss.lumfu(X,M,D)
+    P.semilogy(X,y/Blanton,'b--*',label=r'$\mathrm{b} > 3$')
+
+    M,D=getsb(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND Massfrac> 0.025')
+    y=sdss.lumfu(X,M,D)
+    P.semilogy(X,y/Blanton,'b^:',label=r'mass fraction $> 2.5 \%$')
+
+    M,D=getpb(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL')
+    y=sdss.lumfu(X,M,D)
+    P.semilogy(X,y/Blanton,'r-D',label=r'$\mathrm{W(H\delta)} < -6 \mathrm{\AA}$')
+
+    M,D=gettable(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL AND agn=1',table='sb')
+    y=sdss.lumfu(X,M,D)
+    y=masked_where(X>=-18,y)
+    P.semilogy(X[3:],y[3:]/Blanton[3:],'g-o',label='AGN')
+
+    P.xlabel(r'$M_r$')
+    P.ylabel(r'$\mathrm{Fraction}$')
+    P.rcParams.update({'legend.fontsize':10})
+    P.legend(loc='upper left')
+    P.axis([-24.2,-15.5,4E-5,4E-2])
+
 
 def demo():
     print "This file defines some functions. It is not meant to be executed. Import it instead!"
