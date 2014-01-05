@@ -207,7 +207,7 @@ def selection2latex(curs,outfile='sel2013.tex',table='sel'):
     wanto=wanted.replace('extinction','A')
     wants=wanto.split(',')
     f=open(outfile,'w')
-    curs.execute('SELECT DISTINCT %s FROM %s ORDER BY fuv_lum'%(wanted,table))
+    curs.execute('SELECT DISTINCT %s FROM %s ORDER BY fuv_lum desc'%(wanted,table))
     data=curs.fetchall()
     for name,ra, dec, mag_r in data:
         f.write('\Target{A}{%s}'%(name,))
@@ -235,7 +235,8 @@ def selection2html(curs,outfile='sel2013.html',where='',table='sel'):
         f.write('<tr><td>%s</td><td>%s</td>'%(counter,name))
         if sid!=prevID: f.write('<td><a href="%s">%s</a></td>'%(urlbase+str(sid),str(sid)))
         else: f.write('<td></td>')
-        f.write('<td>%s</td><td>%.5f</td><td>%.5f</td><td>%.4f</td>'%(gid,ra,dec,z))
+        f.write('<td>%s</td><td>%.5f</td><td>%.5f</td>'%(gid,ra,dec))
+        f.write('<td><a href="%s_telluric.png">%.4f</a></td>'%(sid,z))
         f.write('<td>%.3f</td><td>%.1f</td><td>%.3f</td>'%(N.log10(fuv_lum),fuv_s2n,N.log10(fuv_int)))
         f.write('<td>%.2f</td><td>%.2f</td><td>%s</td>'%(A_u,beta or N.nan,agn))
         f.write('<td>%.1f</td><td>%.1f</td><td>%.1f</td>'%(Ha_w,Ha_s,Ha_h))
