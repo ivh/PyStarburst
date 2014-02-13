@@ -134,7 +134,7 @@ def readfile(fname,cursor,table='sdss',delim=DELIM,cnames=None,ctypes=None):
             print 'skipping column %d'%i
             poplist.append(i)
             continue
-        createcolumnifnotexists(c,table=table)
+        createcolumnifnotexists(cursor,c,types[i],table=table)
 
     poplist=N.array(poplist)-N.arange(len(poplist))
     for p in poplist:
@@ -244,29 +244,12 @@ def dumpascispec(curs,where='z<5',table='sdss'):
             outf.write('%.8e %.8e\n'%(wave[i],s))
         outf.close()
 
+
+
 #################
 
-def usage_example():
-    connection,cursor=setupdb()
-    cursor.execute('SELECT Ha_w,Hb_w FROM sdss WHERE zConf>0.95')
-    b=N.array(map(list,cursor.fetchall()))
-    print b.shape
-    P.plot(b[:,0],b[:,1],'ro')
-    P.show()
-
-
 def main():
-
     print 'no main(). this is a library.'
 
 if __name__=='__main__':
     main()
-
-
-
-# query stuff
-#cursor.execute('SELECT email,acctype FROM participants')
-#print cursor.fetchall()
-#names=cursor.fetchmany()
-#names=cursor.fetchone()
-#names=cursor.next()

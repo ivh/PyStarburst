@@ -6,7 +6,7 @@ import sys
 from sdss import *
 from string import lower,strip
 
-conn,curs=DB.setupdb()
+conn,curs=DB.setupdb('data.sqlite')
 
 
 try: f=open(sys.argv[1])
@@ -54,10 +54,12 @@ else: # we read into a new table
     print 'making new table %s'%TABLE
     firstline=f.readline()
     coldef=' '
-    for i,val in enumerate(firstline.split()[1:]):
+    for i,val in enumerate(firstline.split(SEP)[1:]):
         try:
-            float(val)
-            coldef+='%s REAL, '%colist[i+1]
+            f=float(val)
+            if float(int(val))==f:
+                coldef+='%s INTEGER, '%colist[i+1]
+            else: coldef+='%s REAL, '%colist[i+1]
         except:
             coldef+='%s TEXT, '%colist[i+1]
 
