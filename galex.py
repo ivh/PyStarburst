@@ -484,15 +484,15 @@ def plotselimages(curs,ncols=7,table='sel',marked='sel_submit'):
         print i,sid
         ax=P.subplot(nrows,ncols,i,frameon=False)
         ax.set_axis_off()
-        P.imshow(Image.open('obj_%s.jpg'%str(sid)),origin='lower')
+        P.imshow(Image.open('obj_%s.jpg'%str(sid)),origin='upper')
         fuv=curs.execute('select max(fuv_lum) from %s where objID=%s'%(table,sid)).fetchone()
         #if sid in oldsids: c='y'
         #else: c='w'
         c='w'
-        P.text(6,3,'$\mathbf{%d}$'%i,fontsize=18,color=c)
-        P.text(100,7,'$z:\\, %.3f$'%z,fontsize=11,color='w')
-        P.text(5,215,'$W(H\\alpha):\\, %d$'%ha,fontsize=11,color='w')
-        P.text(5,185,'$\log(L_{FUV}):\\, %.1f $'%N.log10(fuv),fontsize=11,color='w')
+        P.text(0.05,0.05,'$\mathbf{%d}$'%i,fontsize=18,color=c,transform=ax.transAxes)
+        P.text(0.4,0.05,'$z:\\, %.3f$'%z,fontsize=11,color='w',transform=ax.transAxes)
+        P.text(0.05,0.88,'$W(H\\alpha):\\, %d$'%ha,fontsize=11,color='w',transform=ax.transAxes)
+        P.text(0.05,0.75,'$\log(L_{FUV}):\\, %.1f $'%N.log10(fuv),fontsize=11,color='w',transform=ax.transAxes)
         i+=1
 
     #ax1=P.axes([0.18,0.01,0.40,0.3])
