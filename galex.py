@@ -476,7 +476,7 @@ def plotselimages(curs,ncols=7,table='sel',marked='sel_submit'):
     P.subplots_adjust(0.01,0.01,0.99,0.99,0.02,0.02)
     #oldsids=zip(*curs.execute('SELECT DISTINCT sid from %s ORDER BY fuv_lum desc'%marked).fetchall())[0]
 
-    curs.execute('SELECT DISTINCT sid,z,Ha_w from %s ORDER BY fuv_lum desc'%table)
+    curs.execute('SELECT DISTINCT sid,z,Ha_w from %s ORDER BY no'%table)
     data=curs.fetchall()
     nrows=N.ceil(len(data)/float(ncols))
     i=1
