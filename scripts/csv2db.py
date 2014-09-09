@@ -56,8 +56,8 @@ else: # we read into a new table
     coldef=' '
     for i,val in enumerate(firstline.split(SEP)[1:]):
         try:
-            f=float(val)
-            if float(int(val))==f:
+            x=float(val)
+            if float(int(x))==x:
                 coldef+='%s INTEGER, '%colist[i+1]
             else: coldef+='%s REAL, '%colist[i+1]
         except:

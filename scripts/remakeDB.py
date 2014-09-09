@@ -4,20 +4,20 @@ FIRSTFILE='objids.csv'
 
 from sdss import *
 import os
-os.system('rm sdss.db')
+os.system('rm data.sqlite')
 os.system('./csv2db.py objids.csv')
 os.system('./csv2db.py spectradata2.csv')
 os.system('./csv2db.py spectradata3.csv')
 os.system('./csv2db.py photdata.csv')
 os.system('./csv2db.py primtarget.csv')
 os.system('./csv2db.py raddata.csv')
-os.system('./csv2db.py sb_bestfits_20130617 None sbfit')
+os.system('./csv2db.py sb_bestfits_20140325 None sbfit')
 os.system('./csv2db.py pbfit1/bestfit2 None pbfit')
 # old data
 #os.system('./csv2db.py sbresult None')
 
 
-conn,curs=DB.setupdb()
+conn,curs=DB.setupdb('data.sqlite')
 
 S.createviews(curs)
 conn.commit()
