@@ -229,16 +229,42 @@ def plot4(curs):
     P.title(r'Mass comparisons (starbursts only)')
 
 def plot5(curs):
-    mtot,bpara,bpara2,age=gettable(curs,cols='mtot,b_para,bpara2,age',where='mtot NOTNULL AND agn=0 AND b_para NOTNULL',table='sball')
-    b,label=bpara,r'$<b>$'
+    mtot,bpara,bpara2,age=gettable(curs,cols='mtot,b_para,bpara2,age',where='mtot NOTNULL AND agn=0 AND b_para NOTNULL AND b_para > 3',table='sball')
+    b,label=bpara2,r'$b$'
     mtot=N.log10(mtot)
     X=N.arange(8,11.4,0.2,dtype='f')
     mean=sdss.averbins(X,mtot,b,median=True)
-    P.plot(mtot,b,'.b',alpha=0.2)
-    P.plot(X[1:-1],mean[1:-1],'r-o')
+    b=masked_where(b>8.5,b)
+    P.hexbin(mtot,b,cmap=P.cm.bone_r,gridsize=(40,17))
+    P.plot(X[1:-2],mean[1:-2],'r-o')
     P.xlabel(r'$\log_{10}(m_{tot})$')
     P.ylabel(label)
-    P.axis([7.9537021982310101, 11.904518405306973, -0.45166015625, 12.17041015625])
+    P.axis((8.1,10.9,.2,8.5))
+
+def plot5b(curs):
+    f=P.gcf()
+    ax1=f.add_axes((.1,.53,.85,.45))
+    ax2=f.add_axes((.1,.08,.85,.45))
+    mtot,massfrac=gettable(curs,cols='mtot,massfrac',where='mtot NOTNULL AND agn=0 AND massfrac NOTNULL AND b_para > 3',table='sball')
+    mtot=N.log10(mtot)
+    X=N.arange(8,11.4,0.2,dtype='f')
+    mean=sdss.averbins(X,mtot,massfrac,median=True)
+    ax1.hexbin(mtot,massfrac,cmap=P.cm.bone_r,gridsize=(30,15))
+    ax1.plot(X[3:-1],mean[3:-1],'r-o')
+    ax1.set_ylabel(r'$\mathrm{mass\,\,fraction}$')
+    ax1.axis((8.4,11.2,-.001,0.15))
+    ax1.text(8.7,0.13,r'$\mathrm{starburts,\,\, b > 3}$',fontsize=11)
+
+    mtot,massfrac=gettable(curs,cols='mtot,massfrac',where='mtot NOTNULL AND agn=0 AND massfrac NOTNULL AND b_param > 3',table='pball')
+    mtot=N.log10(mtot)
+    X=N.arange(8,11.4,0.2,dtype='f')
+    mean=sdss.averbins(X,mtot,massfrac,median=True)
+    ax2.hexbin(mtot,massfrac,cmap=P.cm.bone_r,gridsize=(50,80))
+    ax2.plot(X[4:-1],mean[4:-1],'r-o')
+    ax2.set_ylabel(r'$\mathrm{mass\,\,fraction}$')
+    ax2.set_xlabel(r'$\log_{10}(m_{tot})$')
+    ax2.axis((8.4,11.2,-.001,0.15))
+    ax2.text(8.7,0.13,r'$\mathrm{postbursts,\,\, b > 3}$',fontsize=11)
 
 def plot6(curs):
     sbM,sbD,fade,age=gettable(curs,cols='Mr,voldens,fade,age',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND mf>0.025 AND age NOTNULL',table='sball')
