@@ -329,7 +329,7 @@ def plot10(curs):
     P.ylabel('Ha/Hb')
 
 def plot11(curs):
-    age,mtot,mf,b=gettable(curs,cols='age,mtot,mf,bpara',where='bpara2 > 3',table='sball')
+    age,mtot,mf,b=gettable(curs,cols='age,mtot,Massfrac,b_para',where='bpara2 > 3',table='sball')
     P.loglog(mtot,age,'Db',label=r'$b>3$')
     mtot=masked_where(mf<0.025,mtot)
     P.loglog(mtot,age,'Dg',label=r'$b>3, mf>2.5\%$')
@@ -340,7 +340,7 @@ def plot11(curs):
     P.legend(loc='lower right')
 
 def plot12(curs):
-    age,mtot,b=gettable(curs,cols='age,mtot,bpara',where='agn=0',table='sball')
+    age,mtot,b=gettable(curs,cols='age,mtot,b_para',where='agn=0',table='sball')
     b1=masked_where(age>=5E7,b)
     b2=masked_where(age<=5E7,b)
     b2=masked_where(age>=5E8,b2)
@@ -427,35 +427,52 @@ def plot18(curs):
         P.plot([8.65],[0.8],'k>', transform=trans)
 
 def plot19(curs):
+    Fig=P.gcf()
+    ax1=Fig.add_axes((.12,.4,.85,.58))
+    ax2=Fig.add_axes((.12,.07,.85,.33))
     X=N.arange(-24,-15.5,1/3.0,dtype='f')
     Blanton=sdss.schechterBlanton(X)
+    ax1.semilogy(X,Blanton,'k-',label='total (Blanton et al. (2001))')
 
-    M,D=getsb(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND Ha_w > 100')
-    y=sdss.lumfu(X,M,D)
-    P.semilogy(X,y/Blanton,'b-.s',label=r'$\mathrm{W(H\alpha)} > 100 \mathrm{\AA}$')
+    # completeness limit
+    ax1.plot((-17,-17),(1E-8,1E-3),'k--',lw=3)
+    ax2.plot((-17,-17),(1E-4,2E-2),'k--',lw=3)
+
+    #M,D=getsb(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND Ha_w > 100')
+    #y=sdss.lumfu(X,M,D)
+    #ax1.semilogy(X,y,'b-.s',label=r'$\mathrm{W(H\alpha)} > 100 \mathrm{\AA}$')
+    #ax2.semilogy(X,y/Blanton,'b-.s',label=r'$\mathrm{W(H\alpha)} > 100 \mathrm{\AA}$')
 
     M,D=getsb(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND bpara2 >3')
     y=sdss.lumfu(X,M,D)
-    P.semilogy(X,y/Blanton,'b--*',label=r'$\mathrm{b} > 3$')
+    ax1.semilogy(X,y,'b--*',label=r'$\mathrm{b} > 3$')
+    ax2.semilogy(X,y/Blanton,'b--*',label=r'$\mathrm{b} > 3$')
 
     M,D=getsb(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND Massfrac> 0.025')
     y=sdss.lumfu(X,M,D)
-    P.semilogy(X,y/Blanton,'b^:',label=r'mass fraction $> 2.5 \%$')
+    ax1.semilogy(X,y,'b^:',label=r'mass fraction $> 2.5 \%$')
+    ax2.semilogy(X,y/Blanton,'b^:',label=r'mass fraction $> 2.5 \%$')
 
     M,D=getpb(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL')
     y=sdss.lumfu(X,M,D)
-    P.semilogy(X,y/Blanton,'r-D',label=r'$\mathrm{W(H\delta)} < -6 \mathrm{\AA}$')
+    ax1.semilogy(X,y,'r-D',label=r'$\mathrm{W(H\delta)} < -6 \mathrm{\AA}$')
+    ax2.semilogy(X,y/Blanton,'r-D',label=r'$\mathrm{W(H\delta)} < -6 \mathrm{\AA}$')
 
     M,D=gettable(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL AND agn=1',table='sb')
     y=sdss.lumfu(X,M,D)
     y=masked_where(X>=-18,y)
-    P.semilogy(X[3:],y[3:]/Blanton[3:],'g-o',label='AGN')
+    ax1.semilogy(X[3:],y[3:],'g-o',label='AGN')
+    ax2.semilogy(X[3:],(y/Blanton)[3:],'g-o',label='AGN')
 
-    P.xlabel(r'$M_r$')
-    P.ylabel(r'$\mathrm{Fraction}$')
+    ax1.set_xticklabels([])
+    ax1.set_ylabel(r'$\Phi\quad [\mathrm{Mpc}^{-3}\, \mathrm{mag}^{-1}]$')
     P.rcParams.update({'legend.fontsize':10})
-    P.legend(loc='upper left')
-    P.axis([-24.2,-15.5,4E-5,4E-2])
+    ax1.legend(loc='upper left')
+    ax1.axis([-24.2,-15.5,4E-10,2E-2])
+
+    ax2.set_xlabel(r'$M_r$')
+    ax2.set_ylabel(r'$\mathrm{Fraction}$')
+    ax2.axis([-24.2,-15.5,4E-5,4E-2])
 
 
 def demo():
