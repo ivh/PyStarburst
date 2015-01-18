@@ -144,6 +144,15 @@ class inspectage(inspect):
         self.ax1.loglog(self.age,self.Ha_w,'k-')
         self.fig1.canvas.draw()
 
+def plot_zhist(curs):
+    sbz,sbb=gettable(curs,cols='z,b_para',where='agn=0',table='sball')
+    pbz,pbb=gettable(curs,cols='z,b_param',where='b_param',table='pball')
+    bins=N.arange(0.0,0.24,0.02)
+    P.hist(pbz,bins=bins,color='y',histtype='stepfilled',label='postburst candidates')
+    P.hist(sbz,bins=bins,histtype='step',label='starburst candidates')
+    P.legend(loc='upper right',fontsize=10)
+    P.xlabel(r'$z$')
+    P.ylabel(r'$N$')
 
 
 def plot1(cursor):
@@ -237,7 +246,7 @@ def plot5(curs):
     X=N.arange(8,11.4,0.2,dtype='f')
     mean=sdss.averbins(X,mtot,massfrac,median=True)
     ax1.hexbin(mtot,massfrac,cmap=P.cm.bone_r,gridsize=(50,20))
-    ax1.plot(X[3:-1],mean[3:-1],'r-o')
+    ax1.plot(X[4:-1],mean[4:-1],'r-o')
     ax1.set_ylabel(r'$\mathrm{mass\,\,fraction}$')
     ax1.axis((8.4,11.2,-.001,0.15))
     ax1.text(8.7,0.13,r'$\mathrm{starbursts,\,\, b > 3}$',fontsize=11)
