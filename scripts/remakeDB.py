@@ -12,9 +12,7 @@ os.system('./csv2db.py photdata.csv')
 os.system('./csv2db.py primtarget.csv')
 os.system('./csv2db.py raddata.csv')
 os.system('./csv2db.py sb_bestfits_20140325 None sbfit')
-os.system('./csv2db.py pbfit1/bestfit2 None pbfit')
-# old data
-#os.system('./csv2db.py sbresult None')
+os.system('./csv2db.py best2z02_pb None pbfit')
 
 
 conn,curs=DB.setupdb('data.sqlite')
