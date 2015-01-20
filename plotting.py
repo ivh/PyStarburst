@@ -146,10 +146,17 @@ class inspectage(inspect):
 
 def plot_zhist(curs):
     sbz,sbb=gettable(curs,cols='z,b_para',where='agn=0',table='sball')
-    pbz,pbb=gettable(curs,cols='z,b_param',where='b_param',table='pball')
+    pbz,pbb=gettable(curs,cols='z,b_param',where='z>0.0',table='pball')
     bins=N.arange(0.0,0.24,0.02)
     P.hist(pbz,bins=bins,color='y',histtype='stepfilled',label='postburst candidates')
     P.hist(sbz,bins=bins,histtype='step',label='starburst candidates')
+
+    sbz,sbb=gettable(curs,cols='z,b_para',where='agn=0 and Massfrac > 0.03',table='sball')
+    pbz,pbb=gettable(curs,cols='z,b_param',where='Massfrac > 0.03',table='pball')
+    P.hist(pbz,bins=bins,histtype='stepfilled',color='k',alpha=0.3,label=r'postbursts $f_{burst}>3\%$',weights=N.ones(pbz.shape))
+    P.hist(sbz,bins=bins,histtype='step',color='r',label=r'starbursts $f_{burst}>3\%$',weights=N.ones(sbz.shape))
+
+
     P.legend(loc='upper right',fontsize=10)
     P.xlabel(r'$z$')
     P.ylabel(r'$N$')
