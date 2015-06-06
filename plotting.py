@@ -248,7 +248,7 @@ def plot5(curs):
     f=P.gcf()
     ax1=f.add_axes((.12,.53,.85,.45))
     ax2=f.add_axes((.12,.09,.85,.45))
-    mtot,massfrac=gettable(curs,cols='mtot,massfrac',where='mtot NOTNULL AND agn=0 AND massfrac NOTNULL AND b_para > 0.6',table='sball')
+    mtot,massfrac=gettable(curs,cols='mtot,massfrac',where='mtot NOTNULL AND agn=0 AND massfrac NOTNULL AND bpara2 >3',table='sball')
     mtot=N.log10(mtot)
     X=N.arange(8,11.4,0.2,dtype='f')
     mean=sdss.averbins(X,mtot,massfrac,median=True)
@@ -256,7 +256,7 @@ def plot5(curs):
     ax1.plot(X[4:-1],mean[4:-1],'r-o')
     ax1.set_ylabel(r'$\mathrm{mass\,\,fraction}$')
     ax1.axis((8.4,11.2,-.001,0.15))
-    ax1.text(8.7,0.13,r'$\mathrm{starbursts,\,\, b > 0.6}$',fontsize=11)
+    ax1.text(8.7,0.13,r'$\mathrm{starbursts,\,\, b > 3}$',fontsize=11)
 
     mtot,massfrac=gettable(curs,cols='mtot,massfrac',where='mtot NOTNULL AND agn=0 AND massfrac NOTNULL',table='pball')
     mtot=N.log10(mtot)
@@ -267,7 +267,7 @@ def plot5(curs):
     ax2.set_ylabel(r'$\mathrm{mass\,\,fraction}$')
     ax2.set_xlabel(r'$\log_{10}({\cal M}_{tot})$')
     ax2.axis((8.4,11.2,-.001,0.15))
-    #ax2.text(8.7,0.13,r'$\mathrm{postbursts,\,\, b > 3}$',fontsize=11)
+    ax2.text(8.7,0.13,r'$\mathrm{postbursts}$',fontsize=11)
 
 def plot6(curs):
     sbM,sbD,fade,age=gettable(curs,cols='Mr,voldens,fade,age',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND Massfrac>0.025 AND age NOTNULL',table='sball')
