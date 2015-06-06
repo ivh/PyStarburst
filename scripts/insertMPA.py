@@ -1,37 +1,51 @@
 #!/usr/bin/env python
-
+import numpy as np
+import sqlite3
 from pylab import *
 from sdss import *
 import pyfits
+from itertools import izip
 
-conn,curs = DB.setupdb('data.sqlite')
+for t in (np.int8, np.int16, np.int32, np.int64,
+        np.uint8, np.uint16, np.uint32, np.uint64):
+        sqlite3.register_adapter(t, long)
+for t in (np.float16, np.float32, np.float64, np.float128):
+        sqlite3.register_adapter(t, double)
 
-#create table mpa (plate INTEGER, mjd INTEGER, fiber INTEGER, EW_Ha FLOAT, EW_Hd FLOAT, balm_sigma FLOAT, SFR_fib FLOAT, SFR_tot FLOAT);
+# data_mpa.sqlite should be fresh copy of data.sqlite
+conn,curs = DB.setupdb('data_mpa.sqlite')
+
+try:
+    curs.execute("create table mpa (plate INTEGER, mjd INTEGER, fiber INTEGER, z FLOAT,EW_Ha FLOAT, EW_Hd FLOAT, balm_sigma FLOAT, SFR_fib FLOAT, SFR_tot FLOAT, m_stellar FLOAT);")
+except:
+    pass
 
 
 ginfo=pyfits.open('mpa-sfr/gal_info_dr7_v5_2.fit.gz')[1].data
 fibsfr=pyfits.open('mpa-sfr/gal_fibsfr_dr7_v5_2.fits.gz')[1].data
 totsfr=pyfits.open('mpa-sfr/gal_totsfr_dr7_v5_2.fits.gz')[1].data
 lines=pyfits.open('mpa-sfr/gal_line_dr7_v5_2.fit.gz')[1].data
-ourIDs=curs.execute('select plate,mjd,fiberID from sball').fetchall()
+stellar=pyfits.open('mpa-sfr/totlgm_dr7_v5_2.fit.gz')[1].data
+#ourIDs=curs.execute('select plate,mjd,fiberID from sball').fetchall()
 
 print "done opening files"
 
-count=0
-for i,ginf in enumerate(ginfo):
-    if tuple(ginf[:3]) in ourIDs:
-        print ginf[:3], lines[i][:2]
-        count+=1
-        curs.execute("insert into mpa values (?,?,?,?,?,?,?,?)",(\
-            int(ginf[0]),
-            int(ginf[1]),
-            int(ginf[2]),
-            float(lines[i]['H_alpha_flux'] / lines[i]['H_alpha_cont']),
-            float(lines[i]['H_delta_flux'] / lines[i]['H_delta_cont']),
-            float(lines[i]['sigma_balmer']),
-            float(fibsfr[i][0]),
-            float(totsfr[i][0])))
-        conn.commit()
+curs.executemany("insert into mpa values (?,?,?,?,?,?,?,?,?,?)",izip(\
+            ginfo['PLATEID'],
+            ginfo['MJD'],
+            ginfo['FIBERID'],
+            ginfo['Z'],
+            lines['H_alpha_flux'] / lines['H_alpha_cont'],
+            lines['H_delta_reqw']-lines['H_delta_eqw'],
+            lines['sigma_balmer'],
+            fibsfr['MEDIAN'],
+            totsfr['MEDIAN'],
+            stellar['MEDIAN']))
+            #fibsfr['AVG'],
+            #totsfr['AVG'],
+            #stellar['AVG']))
 
-print count
+curs.execute('create index platefib on mpa (plate,fiber);')
+conn.commit()
+
 conn.close()
