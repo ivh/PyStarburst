@@ -80,6 +80,12 @@ def lee(x):
 def mylee(x):
     return 0.71/(x-0.25)+1.25
 
+def anna1(x):
+    return 0.8/x + 1.1
+
+def anna2(x):
+    return 0.4/x + 1.1
+
 def schechterBlanton(m):
     """
     returns the luminosity function on unit magnitudes
@@ -213,7 +219,7 @@ def lumfu(X,M,voldens):
     y=N.zeros(len(X),dtype='Float64')
     for i,x in enumerate(X):
         y[i] = N.sum(N.where(M<x,voldens,0.0))
-    y[1:] = y[1:] - y[:-1]
+    y[1:] = (y[1:] - y[:-1]) #/ (x[0:] - x[:-1])
     return y
 
 def averbins(X,orgX,Y,median=True):

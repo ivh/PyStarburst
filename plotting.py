@@ -193,12 +193,17 @@ def plot2(cursor):
     ax,ay=gettable(cursor,cols='NII_h/Ha_h,O5008_h/Hb_h',where='agn=1',table='sb')
     nx,ny=gettable(cursor,cols='NII_h/Ha_h,O5008_h/Hb_h',where='agn=0',table='sb')
     P.loglog(ax,ay,',g',ms=5)
-    P.loglog(nx,ny,'Db',ms=5,alpha=0.5)
+    P.loglog(nx,ny,'.k',ms=5,alpha=0.2,markeredgewidth=0)
     x=N.arange(0.001,0.7,0.01)
     P.plot(x,10**sdss.mylee(N.log10(x)),'r-',linewidth=2)
-    P.xlabel(r'$[N\, II]\, /\, H\alpha$')
-    P.ylabel(r'$[O\, III]\, / H\beta$')
+    #P.plot(x,10**sdss.anna1(N.log10(x)),'y--',linewidth=2)
+    #P.plot(x,10**sdss.anna2(N.log10(x)),'y--',linewidth=2)
+    P.plot(x,10**sdss.kauffman(N.log10(x)),'g--',linewidth=2)
+
+    P.xlabel(r'$[N\,\, II]_{6584}\, /\, H\alpha$')
+    P.ylabel(r'$[O\,\, III]_{5007}\, / H\beta$')
     #P.legend((s,m,b),(r'$\sigma(H\alpha)\, <\, 250\, km\,s^{-1}$',r'$250\, km\,s^{-1} <\, \sigma(H\alpha)\, <\, 700\, km\,s^{-1}$',r'$\sigma(H\alpha)\, >\, 700\, km\,s^{-1}$'),loc='lower left')
+    P.axis([0.01,1.5,0.1,15])
 
 def plot3(curs):
     X=N.arange(-24,-15.5,1/3.0,dtype='f')
@@ -465,7 +470,8 @@ def plot19(curs):
     Fig=P.gcf()
     ax1=Fig.add_axes((.12,.4,.85,.58))
     ax2=Fig.add_axes((.12,.07,.85,.33))
-    X=N.arange(-24,-15.5,1/3.0,dtype='f')
+    binsize=1/3.0
+    X=N.arange(-24,-15.5,binsize,dtype='f')
     Blanton=sdss.schechterBlanton(X)
     ax1.semilogy(X,Blanton,'k-',label='total (Blanton et al. (2001))')
 
@@ -479,22 +485,23 @@ def plot19(curs):
     #ax2.semilogy(X,y/Blanton,'b-.s',label=r'$\mathrm{W(H\alpha)} > 100 \mathrm{\AA}$')
 
     M,D=getsb(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND bpara2 >3')
-    y=sdss.lumfu(X,M,D)
+    y=sdss.lumfu(X,M,D) / binsize
+    print X,y
     ax1.semilogy(X,y,'b--*',label=r'$\mathrm{b} > 3$')
     ax2.semilogy(X,y/Blanton,'b--*',label=r'$\mathrm{b} > 3$')
 
     M,D=getsb(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL AND agn=0 AND Massfrac> 0.03')
-    y=sdss.lumfu(X,M,D)
+    y=sdss.lumfu(X,M,D) /binsize
     ax1.semilogy(X,y,'b^:',label=r'mass fraction $> 3 \%$')
     ax2.semilogy(X,y/Blanton,'b^:',label=r'mass fraction $> 3 \%$')
 
     M,D=getpb(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL')
-    y=sdss.lumfu(X,M,D)
+    y=sdss.lumfu(X,M,D) / binsize
     ax1.semilogy(X,y,'r-D',label=r'$\mathrm{W(H\delta)} < -6 \mathrm{\AA}$')
     ax2.semilogy(X,y/Blanton,'r-D',label=r'$\mathrm{W(H\delta)} < -6 \mathrm{\AA}$')
 
     M,D=gettable(curs,cols='Mr,voldens',where='voldens NOTNULL AND Mr NOTNULL AND agn=1',table='sb')
-    y=sdss.lumfu(X,M,D)
+    y=sdss.lumfu(X,M,D) /binsize
     y=masked_where(X>=-18,y)
     ax1.semilogy(X[3:],y[3:],'g-o',label='AGN')
     ax2.semilogy(X[3:],(y/Blanton)[3:],'g-o',label='AGN')
